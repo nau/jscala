@@ -20,7 +20,7 @@ object MyBuild extends Build {
   import BuildSettings._
 
   lazy val root: Project = Project(
-    "root",
+    "jscala",
     file("."),
     settings = buildSettings
   ) aggregate(jscala, examples)
@@ -28,7 +28,7 @@ object MyBuild extends Build {
 
 
   lazy val jscala: Project = Project(
-    "jscala",
+    "jscala-macros",
     file("jscala"),
     settings = buildSettings ++ Seq(
       libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _))
@@ -37,6 +37,8 @@ object MyBuild extends Build {
   lazy val examples: Project = Project(
     "jscala-examples",
     file("jscala-examples"),
-    settings = buildSettings
+    settings = buildSettings ++ Seq(
+      libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "1.9.1" % "test")
+    )
   ) dependsOn(jscala)
 }

@@ -1,38 +1,21 @@
 package com.github.nau
 
-
-sealed trait JsAst
-
-sealed trait JsStmt extends JsAst
-sealed trait JsExpr extends JsAst
-sealed trait JsLit extends JsExpr
-
-case class JsBool(value: Boolean) extends JsLit
-case class JsString(value: String) extends JsLit
-case class JsNum(value: Double, isFloat: Boolean) extends JsLit
-case object JsUnit extends JsLit with JsStmt
-
-case class JsIdent(ident: String) extends JsExpr
-case class JsSelect(qualifier: JsExpr, name: String) extends JsExpr
-case class JsUnOp(operator: String, operand: JsExpr) extends JsExpr
-case class JsBinOp(operator: String, lhs: JsExpr, rhs: JsExpr) extends JsExpr
-case class JsCall(callee: JsExpr, params: List[JsExpr]) extends JsExpr
-case class JsAnonFunDecl(params: List[String], body: JsStmt) extends JsExpr
-case class JsAnonObjDecl(fields: Map[String, JsExpr]) extends JsExpr
-
-case class JsBlock(stmts: List[JsStmt]) extends JsStmt
-case class JsExprStmt(jsExpr: JsExpr) extends JsStmt
-case class JsIf(cond: JsExpr, `then`: JsStmt, `else`: Option[JsStmt]) extends JsStmt
-case class JsWhile(cond: JsExpr, body: JsStmt) extends JsStmt
-case class JsVarDef(ident: String, initializer: JsExpr) extends JsStmt
-case class JsFunDecl(ident: String, params: List[String], body: JsStmt) extends JsStmt
-case class JsReturn(jsExpr: JsExpr) extends JsStmt
+import javax.script.ScriptEngineManager
 
 package object jscala {
   import language.experimental.macros
 
   import scala.reflect.macros.Context
-
+  implicit class JsAstOps(ast: JsAst) {
+    def print = JavascriptPrinter.print(ast, 0)
+    def eval() = {
+      val factory = new ScriptEngineManager()
+      // create a JavaScript engine
+      val engine = factory.getEngineByName("JavaScript")
+      // evaluate JavaScript code from String
+      engine.eval(print)
+    }
+  }
 
   class ScalaToJsConverter[C <: Context](val c: C) {
     import c.universe._
@@ -104,6 +87,8 @@ package object jscala {
       lazy val stdFuncsSubst = Set("replaceAll")
 
       lazy val jsStandardFuncs: ToExpr[JsExpr] = {
+        case Select(Select(This(tn), predef), fn) if tn == newTypeName("scala") && predef == newTermName("Predef") =>
+          reify(JsIdent(c.literal(fn.decoded).splice))
         case Select(ident, name) if stdFuncsMap.contains(name.encoded) =>
           reify(JsSelect(jsExpr(ident).splice, c.literal(stdFuncsMap(name.encoded)).splice))
         case tree =>
@@ -111,7 +96,23 @@ package object jscala {
           jsExpr(tree)
       }
 
-      lazy val jsCallExpr: ToExpr[JsCall] = {
+      lazy val jsForStmt: ToExpr[JsStmt] = {
+        case Apply(TypeApply(Select(Apply(TypeApply(Select(Select(This(name), predef), arrayOps), _), List(Ident(coll))), fn), _), List(Function(List(ValDef(_, ident, _, _)), body)))
+          if name == newTypeName("scala") && predef == newTermName("Predef") && arrayOps == newTermName("refArrayOps") && fn == newTermName("foreach") =>
+          val forBody = jsStmt(body)
+          reify(JsFor(JsIdent(c.literal(coll.decoded).splice), JsIdent(c.literal(ident.decoded).splice), forBody.splice))
+      }
+
+      lazy val jsCallExpr: ToExpr[JsExpr] = {
+        case Apply(Apply(TypeApply(Select(Select(Ident(name), array), apply), _), args), _) if name == newTermName("scala") && array == newTermName("Array") && apply == newTermName("apply") =>
+          val params = exprsToExprOfList(args map jsExpr)
+          reify(JsArray(params.splice))
+        case TypeApply(Select(Select(Ident(name), array), apply), args) if name == newTermName("scala") && array == newTermName("Array") && apply == newTermName("apply") =>
+          val params = exprsToExprOfList(args map jsExpr)
+          reify(JsArray(params.splice))
+        case Apply(Select(Select(Ident(name), array), apply), args) if name == newTermName("scala") && array == newTermName("Array") && apply == newTermName("apply") =>
+          val params = exprsToExprOfList(args map jsExpr)
+          reify(JsArray(params.splice))
         case Apply(Select(ident, name), args) if stdFuncsSubst contains name.encoded =>
           name.encoded match {
             case "replaceAll" =>
@@ -148,38 +149,31 @@ package object jscala {
           reify(JsVarDef(identifier.splice, initializer.splice))
       }
 
+      lazy val jsFunBody: ToExpr[JsBlock] = {
+        case lit@Literal(_) =>
+          val body = if (isUnit(lit)) Nil else List(jsReturnStmt(lit))
+          reify(JsBlock(exprsToExprOfList(body).splice))
+        case Block(stmts, expr) =>
+          val lastExpr = if (isUnit(expr)) Nil else List(jsReturn(expr))
+          val ss = exprsToExprOfList(stmts.map(jsStmt) ::: lastExpr)
+          reify(JsBlock(ss.splice))
+        case rhs => reify(JsBlock(List(jsReturn(rhs).splice)))
+      }
+
       lazy val jsFunDecl: ToExpr[JsFunDecl] = {
         case DefDef(_, name, _, vparamss, _, rhs) =>
 //          println(showRaw(rhs))
           val ident = c.literal(name.encoded)
           val a = vparamss.headOption.map(vp => vp.map(v => c.literal(v.name.encoded))).getOrElse(Nil)
           val params = exprsToExprOfList(a)
-          val body = rhs match {
-            case lit@Literal(_) =>
-              val body = if (isUnit(lit)) reify(JsUnit) else jsReturnStmt(lit)
-              reify(JsBlock(List(body.splice)))
-            case Block(stmts, expr) =>
-              val lastExpr = if (isUnit(expr)) reify(JsUnit) else jsReturn(expr)
-              val ss = exprsToExprOfList(stmts.map(jsStmt) :+ lastExpr)
-              reify(JsBlock(ss.splice))
-            case _ => reify(JsBlock(List(jsReturn(rhs).splice)))
-          }
+          val body = jsFunBody(rhs)
           reify(JsFunDecl(ident.splice, params.splice, body.splice))
       }
 
       lazy val jsAnonFunDecl: ToExpr[JsAnonFunDecl] = {
         case Function(vparams, rhs) =>
           val params = exprsToExprOfList(vparams.map(v => c.literal(v.name.encoded)))
-          val body = rhs match {
-            case lit@Literal(_) =>
-              val body = if (isUnit(lit)) reify(JsUnit) else jsReturnStmt(lit)
-              reify(JsBlock(List(body.splice)))
-            case Block(stmts, expr) =>
-              val lastExpr = if (isUnit(expr)) reify(JsUnit) else jsReturn(expr)
-              val ss = exprsToExprOfList(stmts.map(jsStmt) :+ lastExpr)
-              reify(JsBlock(ss.splice))
-            case _ => reify(JsBlock(List(jsReturn(rhs).splice)))
-          }
+          val body = jsFunBody(rhs)
           reify(JsAnonFunDecl(params.splice, body.splice))
       }
 
@@ -191,9 +185,13 @@ package object jscala {
           }.toMap
           val m = mapToExprOfMap(defs)
           reify(JsAnonObjDecl(m.splice))
-        case tree => println("AnonObj " + showRaw(tree)); reify(JsAnonObjDecl(Map.empty))
       }
 
+      lazy val jsReturn1: ToExpr[JsStmt] = {
+        case Return(expr) =>
+          println("Return: " + showRaw(expr))
+          reify(JsReturn(jsExpr(expr).splice))
+      }
       lazy val jsReturn: ToExpr[JsStmt] = jsReturnStmt orElse jsStmt
       lazy val jsReturnStmt: ToExpr[JsReturn] = jsExpr andThen (jsExpr => reify(JsReturn(jsExpr.splice)))
 
@@ -204,11 +202,12 @@ package object jscala {
         jsUnitLit,
         jsBlock,
         jsVarDefStmt,
-        jsExprStmt,
         jsIfStmt,
         jsWhileStmt,
-        jsReturnStmt,
-        jsFunDecl
+        jsForStmt,
+        jsFunDecl,
+        jsReturn1,
+        jsExprStmt
       ) reduceLeft (_ orElse _)
 
       lazy val jsBlock: ToExpr[JsBlock] = {
@@ -218,7 +217,7 @@ package object jscala {
           reify(JsBlock(ss.splice))
       }
 
-      jsBlock orElse jsExpr apply tree
+      jsExpr orElse jsStmt apply tree
     }
   }
 

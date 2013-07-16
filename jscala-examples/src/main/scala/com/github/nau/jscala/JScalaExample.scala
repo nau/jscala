@@ -1,8 +1,5 @@
 package com.github.nau.jscala
 
-import javax.script.ScriptEngineManager
-
-
 object JScalaExample {
   def main(args: Array[String]) {
     object $ {
@@ -52,14 +49,13 @@ object JScalaExample {
       }
       obj.id
     }
-    println(js1)
-    val print = JavascriptPrinter.print(js1, 0)
-    println(print)
-    val factory = new ScriptEngineManager()
-    // create a JavaScript engine
-    val engine = factory.getEngineByName("JavaScript")
-    // evaluate JavaScript code from String
-    engine.eval(print)
+    val js2 = javascript {
+      def f() {
+        while(true) return
+      }
+    }
+    println(js1.eval())
+    println(js2.print)
   }
 }
 
