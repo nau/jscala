@@ -1,4 +1,4 @@
-package com.github.nau.jscala
+package org.jscala
 
 sealed trait JsAst
 

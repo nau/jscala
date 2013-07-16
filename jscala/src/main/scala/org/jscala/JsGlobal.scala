@@ -1,5 +1,4 @@
-package com.github.nau.jscala
-
+package org.jscala
 
 object console {
   def log(s: Any) {

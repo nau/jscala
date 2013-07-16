@@ -1,4 +1,4 @@
-package com.github.nau.jscala
+package org.jscala
 
 object JavascriptPrinter {
   def print(ast: JsAst, indent: Int): String = {

@@ -1,4 +1,4 @@
-package com.github.nau.jscala
+package org.jscala
 
 trait Doc {
   // Returns a collection of all the anchors in the document

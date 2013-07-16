@@ -1,4 +1,4 @@
-package com.github.nau
+package org
 
 import javax.script.ScriptEngineManager
 

@@ -1,7 +1,7 @@
-package com.github.nau.jscala
+package org.jscala
 
 import org.scalatest.FunSuite
-import com.github.nau.jscala.{javascript=>js}
+import org.jscala.{javascript=>js}
 
 class ScalaToJsConverterTest extends FunSuite {
   test("Literals") {
