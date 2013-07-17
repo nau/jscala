@@ -17,11 +17,13 @@ object JavascriptPrinter {
       case JsNum(value, false)                  => value.toLong.toString
       case JsArray(values)                      => values.map(p).mkString("[", ", ", "]")
       case JsIdent(value)                       => value
+      case JsAccess(qual, key)                  => s"${p(qual)}[${p(key)}]"
       case JsSelect(qual, "apply")              => s"${p(qual)}"
       case JsSelect(qual, name)                 => s"${p(qual)}.$name"
       case JsUnOp(operator, operand)            => s"${operator}${s(operand)}"
       case JsBinOp("=", lhs, rhs)               => s"${s(lhs)} = ${s(rhs)}"
       case JsBinOp(operator, lhs, rhs)          => s"(${s(lhs)}) $operator ${s(rhs)}"
+      case JsNew(call)                          => s"""new ${p(call)}"""
       case JsCall(callee, params)               => s"""${p(callee)}(${params.map(p(_)).mkString(", ")})"""
       case JsBlock(stmts)                       => s"""{\n${stmts.map(p2(_)).mkString(";\n")}\n${" " * indent}}"""
       case JsExprStmt(jsExpr)                   => p(jsExpr)

@@ -1,5 +1,7 @@
 package org.jscala
 
+import scala.util.matching.Regex
+
 sealed trait JsAst
 
 sealed trait JsStmt extends JsAst
@@ -13,10 +15,12 @@ case class JsArray(values: List[JsExpr]) extends JsLit
 case object JsUnit extends JsLit with JsStmt
 
 case class JsIdent(ident: String) extends JsExpr
+case class JsAccess(qualifier: JsExpr, key: JsExpr) extends JsExpr
 case class JsSelect(qualifier: JsExpr, name: String) extends JsExpr
 case class JsUnOp(operator: String, operand: JsExpr) extends JsExpr
 case class JsBinOp(operator: String, lhs: JsExpr, rhs: JsExpr) extends JsExpr
 case class JsCall(callee: JsExpr, params: List[JsExpr]) extends JsExpr
+case class JsNew(ctor: JsCall) extends JsExpr
 case class JsAnonFunDecl(params: List[String], body: JsStmt) extends JsExpr
 case class JsAnonObjDecl(fields: Map[String, JsExpr]) extends JsExpr
 

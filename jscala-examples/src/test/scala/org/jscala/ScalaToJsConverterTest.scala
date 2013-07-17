@@ -115,21 +115,78 @@ class ScalaToJsConverterTest extends FunSuite {
       }
     } === expectedFunc5)
 
-    val els = Some(JsExprStmt(JsCall(JsIdent("println"),List(JsString("a")))))
+    val els = Some(JsExprStmt(JsCall(JsSelect(JsIdent("console"), "log"), List(JsString("a")))))
     val func6Body = JsBlock(List(JsIf(JsBinOp(">", JsCall(JsSelect(ja, "length"), Nil), JsNum(2.0, false)), JsReturn(JsUnit), els)))
     assert(js { def func6(a: String) {
       if (a.length > 2) return else {
-        println("a")
+        console.log("a")
       }
     } } === JsBlock(List(JsFunDecl("func6",List("a"),func6Body), JsUnit)))
+  }
+
+  test("String operations") {
+    val ast = js {
+      val a = new JString("str")
+      a.replace("s", "a").slice(1, 2)
+    }
+    val call = JsCall(JsSelect(JsCall(JsSelect(JsIdent("a"), "replace"), List(JsString("s"), JsString("a"))), "slice"), List(JsNum(1.0, false), JsNum(2.0, false)))
+    assert(ast === JsBlock(List(JsVarDef("a",JsString("str")), JsExprStmt(call))))
   }
 
   test("Arrays") {
     assert(js(Array(1, 2)) === JsArray(List(JsNum(1.0, false), JsNum(2.0, false))))
     assert(js(Array("1", "2")) === JsArray(List(JsString("1"), JsString("2"))))
+    val call = JsCall(JsSelect(JsIdent("console"), "log"), List(JsIdent("i")))
     assert(js{
       val a = Array("1", "2")
-      for (i <- a) println(i)
-    } === JsBlock(List(JsVarDef("a", JsArray(List(JsString("1"), JsString("2")))), JsFor(JsIdent("a"), JsIdent("i"), JsExprStmt(JsCall(JsIdent("println"), List(JsIdent("i"))))))))
+      for (i <- a) console.log(i)
+    } === JsBlock(List(JsVarDef("a", JsArray(List(JsString("1"), JsString("2")))), JsFor(JsIdent("a"), JsIdent("i"), JsExprStmt(call)))))
+    val call1 = JsCall(JsSelect(JsIdent("console"), "log"), List(JsCall(JsSelect(JsIdent("a"), "pop"), Nil)))
+    assert(js {
+      val a = JArray("1", "2")
+      console.log(a.pop())
+    } === JsBlock(List(JsVarDef("a", JsArray(List(JsString("1"), JsString("2")))), JsExprStmt(call1))))
+    assert(js {
+      val a = JArray(1, 2)
+      console.log(a.pop())
+    } === JsBlock(List(JsVarDef("a", JsArray(List(JsNum(1.0,false), JsNum(2.0,false)))), JsExprStmt(call1))))
+  }
+
+  test("Math") {
+    val ast = js(Math.abs(-1))
+    assert(ast === JsCall(JsSelect(JsIdent("Math"), "abs"), List(JsNum(-1.0, true))))
+  }
+
+  test("Global functions") {
+    val ast = js(escape("asdf"))
+    assert(ast === JsCall(JsIdent("escape"), List(JsString("asdf"))))
+  }
+
+  test("RegExp") {
+    val ast = js {
+      val a = new RegExp("d.*", "g")
+      a.exec("asdf").toString()
+    }
+    val call = JsCall(JsSelect(JsCall(JsSelect(JsIdent("a"), "exec"), List(JsString("asdf"))), "toString"), Nil)
+    assert(ast === JsBlock(List(JsVarDef("a",JsNew(JsCall(JsIdent("RegExp"),List(JsString("d.*"), JsString("g"))))), JsExprStmt(call))))
+  }
+
+  test("Date") {
+    val ast = js {
+      val a = new Date()
+      a.getDay().toString()
+    }
+    val call = JsCall(JsSelect(JsCall(JsSelect(JsIdent("a"), "getDay"), Nil), "toString"), Nil)
+    assert(ast === JsBlock(List(JsVarDef("a", JsNew(JsCall(JsIdent("Date"), Nil))), JsExprStmt(call))))
+  }
+
+  test("Maps") {
+    val ast = js {
+      val a = Map("field" -> JArray(1, 2), ("field2", JArray(1)), "field3" → JArray[Int]())
+      a("field").pop().toString()
+    }
+    val call1 = JsCall(JsSelect(JsCall(JsSelect(JsAccess(JsIdent("a"), JsString("field")), "pop"), Nil), "toString"), Nil)
+    val map = Map("field" -> JsArray(List(JsNum(1.0, false), JsNum(2.0, false))), "field2" -> JsArray(List(JsNum(1.0, false))), "field3" -> JsArray(Nil))
+    assert(ast === JsBlock(List(JsVarDef("a", JsAnonObjDecl(map)), JsExprStmt(call1))))
   }
 }
