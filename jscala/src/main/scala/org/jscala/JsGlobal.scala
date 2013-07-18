@@ -222,9 +222,3 @@ object console {
     println(s)
   }
 }
-
-trait Element
-
-class JsGlobal {
-
-}

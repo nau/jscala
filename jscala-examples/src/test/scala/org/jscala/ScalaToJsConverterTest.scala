@@ -122,6 +122,14 @@ class ScalaToJsConverterTest extends FunSuite {
         console.log("a")
       }
     } } === JsBlock(List(JsFunDecl("func6",List("a"),func6Body), JsUnit)))
+    val stmt = JsExprStmt(JsCall(JsSelect(JsIdent("console"), "log"), List(JsAccess(JsIdent("a"), JsIdent("i")))))
+    val jsFor = JsFor(JsIdent("i"), JsNum(0.0, false), JsSelect(JsIdent("a"), "length"), stmt)
+    assert(js {
+      val a = Array(1, 2)
+      for (i <- 0 until a.length) {
+        console.log(a(i))
+      }
+    } === JsBlock(List(JsVarDef("a", JsArray(List(JsNum(1.0, false), JsNum(2.0, false)))), jsFor)))
   }
 
   test("String operations") {
@@ -140,7 +148,7 @@ class ScalaToJsConverterTest extends FunSuite {
     assert(js{
       val a = Array("1", "2")
       for (i <- a) console.log(i)
-    } === JsBlock(List(JsVarDef("a", JsArray(List(JsString("1"), JsString("2")))), JsFor(JsIdent("a"), JsIdent("i"), JsExprStmt(call)))))
+    } === JsBlock(List(JsVarDef("a", JsArray(List(JsString("1"), JsString("2")))), JsForIn(JsIdent("a"), JsIdent("i"), JsExprStmt(call)))))
     val call1 = JsCall(JsSelect(JsIdent("console"), "log"), List(JsCall(JsSelect(JsIdent("a"), "pop"), Nil)))
     assert(js {
       val a = JArray("1", "2")
@@ -160,6 +168,17 @@ class ScalaToJsConverterTest extends FunSuite {
   test("Global functions") {
     val ast = js(escape("asdf"))
     assert(ast === JsCall(JsIdent("escape"), List(JsString("asdf"))))
+    val ast1 = js(typeof("asdf"))
+    assert(ast1 === JsCall(JsIdent("typeof"), List(JsString("asdf"))))
+    val ast2 = js {
+      val a = include("[1, 2]").asInstanceOf[JArray[Int]]
+      if (a.length > 1) {
+        include("console.log(a[1])")
+      }
+    }
+    println(ast2.asString)
+    val jsIf = JsIf(JsBinOp(">", JsSelect(JsIdent("a"), "length"), JsNum(1.0, false)), JsExprStmt(JsRaw("console.log(a[1])")), None)
+    assert(ast2 === JsBlock(List(JsVarDef("a", JsRaw("[1, 2]")), jsIf)))
   }
 
   test("RegExp") {
@@ -181,6 +200,8 @@ class ScalaToJsConverterTest extends FunSuite {
   }
 
   test("Maps") {
+    import collection.mutable
+    // Immutable Map
     val ast = js {
       val a = Map("field" -> JArray(1, 2), ("field2", JArray(1)), "field3" → JArray[Int]())
       a("field").pop().toString()
@@ -188,5 +209,14 @@ class ScalaToJsConverterTest extends FunSuite {
     val call1 = JsCall(JsSelect(JsCall(JsSelect(JsAccess(JsIdent("a"), JsString("field")), "pop"), Nil), "toString"), Nil)
     val map = Map("field" -> JsArray(List(JsNum(1.0, false), JsNum(2.0, false))), "field2" -> JsArray(List(JsNum(1.0, false))), "field3" -> JsArray(Nil))
     assert(ast === JsBlock(List(JsVarDef("a", JsAnonObjDecl(map)), JsExprStmt(call1))))
+
+    // Mutable Map
+    val ast1 = js {
+      val a = mutable.Map("field" -> JArray(1, 2), ("field2", JArray(1)), "field3" → JArray[Int]())
+      a("field") = a("field2")
+    }
+    val stmt = JsExprStmt(JsBinOp("=", JsAccess(JsIdent("a"), JsString("field")), JsAccess(JsIdent("a"), JsString("field2"))))
+    println(ast1.asString)
+    assert(ast1 === JsBlock(List(JsVarDef("a", JsAnonObjDecl(map)), stmt)))
   }
 }

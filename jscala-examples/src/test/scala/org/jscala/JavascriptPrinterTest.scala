@@ -9,7 +9,7 @@ class JavascriptPrinterTest extends FunSuite {
       val a = Array("1", "2", "3")
       for (i <- a) console.log(i)
     }
-    assert(ast.print === """{
+    assert(ast.asString === """{
                             |  var a = ["1", "2", "3"];
                             |  for (i in a) console.log(i)
                             |}""".stripMargin)
@@ -22,8 +22,19 @@ class JavascriptPrinterTest extends FunSuite {
         ()
       })()
     }
-    assert(ast.print === """(function () {
+    assert(ast.asString === """(function () {
                             |  console.log(1)
                             |})()""".stripMargin)
+  }
+
+  test("YUI Compressor") {
+    val ast = js {
+      val a = Array("1", "2", "3")
+      for (i <- a) console.log(i)
+    }
+    println(ast.compress)
+    assert(ast.compress === """var a=["1","2","3"];
+                           |for(i in a){console.log(i)
+                           |};""".stripMargin)
   }
 }

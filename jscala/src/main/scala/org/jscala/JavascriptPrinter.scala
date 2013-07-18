@@ -17,10 +17,13 @@ object JavascriptPrinter {
       case JsNum(value, false)                  => value.toLong.toString
       case JsArray(values)                      => values.map(p).mkString("[", ", ", "]")
       case JsIdent(value)                       => value
+      case JsRaw(value)                         => value
       case JsAccess(qual, key)                  => s"${p(qual)}[${p(key)}]"
       case JsSelect(qual, "apply")              => s"${p(qual)}"
       case JsSelect(qual, name)                 => s"${p(qual)}.$name"
       case JsUnOp(operator, operand)            => s"${operator}${s(operand)}"
+      case JsBinOp("=", lhs@JsIdent(_), rhs)    => s"${p(lhs)} = ${s(rhs)}"
+      case JsBinOp("=", lhs@JsSelect(_, _), rhs)=> s"${p(lhs)} = ${s(rhs)}"
       case JsBinOp("=", lhs, rhs)               => s"${s(lhs)} = ${s(rhs)}"
       case JsBinOp(operator, lhs, rhs)          => s"(${s(lhs)}) $operator ${s(rhs)}"
       case JsNew(call)                          => s"""new ${p(call)}"""
@@ -29,7 +32,8 @@ object JavascriptPrinter {
       case JsExprStmt(jsExpr)                   => p(jsExpr)
       case JsIf(cond, thenp, elsep)             => s"if (${p(cond)}) ${p(thenp)}" + elsep.map(e => s" else ${p(e)}").getOrElse("")
       case JsWhile(cond, body)                  => s"while (${p(cond)}) ${p(body)}"
-      case JsFor(coll, ident, body)             => s"for (${p(ident)} in ${p(coll)}) ${p(body)}"
+      case JsFor(ident, from, until, body)      => s"for (var ${p(ident)} = ${p(from)}; ${p(ident)} < ${s(until)}; ${p(ident)}++) ${p(body)}"
+      case JsForIn(coll, ident, body)           => s"for (${p(ident)} in ${p(coll)}) ${p(body)}"
       case JsVarDef(ident, JsUnit)              => s"var ${ident}"
       case JsVarDef(ident, initializer)         => s"var ${ident} = ${p(initializer)}"
       case JsFunDecl(ident, params, body)       => s"""function ${ident}(${params.mkString(", ")}) ${p(body)}"""

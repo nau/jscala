@@ -1,5 +1,5 @@
 import sbt._
-import Keys._
+import sbt.Keys._
 
 object BuildSettings {
   val buildSettings = Defaults.defaultSettings ++ Seq(
@@ -31,7 +31,9 @@ object MyBuild extends Build {
     "jscala-macros",
     file("jscala"),
     settings = buildSettings ++ Seq(
-      libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _))
+      libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
+      libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
+    )
   )
 
   lazy val examples: Project = Project(
