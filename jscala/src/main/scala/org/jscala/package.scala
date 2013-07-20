@@ -4,28 +4,33 @@ import javax.script.ScriptEngineManager
 import com.yahoo.platform.yui.compressor.JavaScriptCompressor
 import java.io.{StringWriter, StringReader}
 import org.mozilla.javascript.ErrorReporter
+import scala.reflect.internal.Flags
 
 package object jscala {
   import language.experimental.macros
-  import language.implicitConversions
 
   import scala.reflect.macros.Context
   implicit class JsAstOps(ast: JsAst) {
     def asString = JavascriptPrinter.print(ast, 0)
     def eval() = {
       val factory = new ScriptEngineManager()
-      // create a JavaScript engine
       val engine = factory.getEngineByName("JavaScript")
-      // evaluate JavaScript code from String
       engine.eval(asString)
     }
     def compress = {
       val compressor = new JavaScriptCompressor(new StringReader(asString), new ErrorReporter {
-        def warning(p1: String, p2: String, p3: Int, p4: String, p5: Int) {}
+        def warning(p1: String, p2: String, p3: Int, p4: String, p5: Int) {
+          println(s"Warn $p1 $p2, ${p3.toString} $p4 ${p5.toString}")
+        }
 
-        def error(p1: String, p2: String, p3: Int, p4: String, p5: Int) {}
+        def error(p1: String, p2: String, p3: Int, p4: String, p5: Int) {
+          println(s"Error $p1 $p2, ${p3.toString} $p4 ${p5.toString}")
+        }
 
-        def runtimeError(p1: String, p2: String, p3: Int, p4: String, p5: Int) = ???
+        def runtimeError(p1: String, p2: String, p3: Int, p4: String, p5: Int) = {
+          println(s"Runtime $p1 $p2, ${p3.toString} $p4 ${p5.toString}")
+          ???
+        }
       })
       val buf = new StringWriter
       compressor.compress(buf, 1, true, false, false, false)
@@ -95,6 +100,11 @@ package object jscala {
     }
 
     def convert(tree: Tree): c.Expr[JsAst] = {
+//      println(showRaw(tree))
+
+      lazy val jsThis: ToExpr[JsIdent] = {
+        case This(name) => reify(JsIdent("this"))
+      }
 
       lazy val jsIdent: ToExpr[JsIdent] = {
         case Ident(name) => reify(JsIdent(c.literal(name.decoded).splice))
@@ -257,10 +267,13 @@ package object jscala {
       }
 
       lazy val jsAnonObjDecl: ToExpr[JsAnonObjDecl] = {
-        case Block(List(ClassDef(_, _, _, Template(_, _, body))), _) =>
+        case Block(List(ClassDef(_, clsName, _, Template(_, _, body))), _/* Constructor call */) =>
           val defs = body.collect {
-//            case DefDef(_, n, _, _, _, rhs) if n != nme.CONSTRUCTOR => n.encoded -> jsExpr(rhs)
-            case ValDef(_, n, _, rhs) => n.decoded -> jsExpr(rhs)
+            case f@DefDef(mods, n, _, argss, _, body) if n != nme.CONSTRUCTOR && !mods.hasFlag(Flags.ACCESSOR.toLong.asInstanceOf[FlagSet]) =>
+              n.decoded -> jsExpr(Function(argss.flatten, body))
+            case ValDef(_, n, _, rhs) =>
+              // For some reason there is an extra space in a field name. Trim it.
+              n.decoded.trim -> jsExpr(rhs)
           }.toMap
           val m = mapToExpr(defs)
           reify(JsAnonObjDecl(m.splice))
@@ -286,6 +299,7 @@ package object jscala {
         jsAnonFunDecl,
         jsSelect,
         jsIdent,
+        jsThis,
         jsAnonObjDecl
       ) reduceLeft( _ orElse _)
       lazy val jsExprStmt: ToExpr[JsExprStmt] = jsExpr andThen (jsExpr => reify(JsExprStmt(jsExpr.splice)))
@@ -300,7 +314,7 @@ package object jscala {
         jsFunDecl,
         jsReturn1,
         jsExprStmt
-      ) reduceLeft (_ orElse _) /*orElse(c.abort(c.macroApplication.pos, showRaw(tree)))*/
+      ) reduceLeft (_ orElse _)
 
       lazy val jsBlock: ToExpr[JsBlock] = {
         case Block(stmts, expr) =>
@@ -308,7 +322,6 @@ package object jscala {
           val ss = listToExpr(stmtTrees map jsStmt)
           reify(JsBlock(ss.splice))
       }
-
       jsExpr orElse jsStmt apply tree
     }
   }

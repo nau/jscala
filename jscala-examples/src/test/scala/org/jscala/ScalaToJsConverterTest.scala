@@ -65,7 +65,15 @@ class ScalaToJsConverterTest extends FunSuite {
     def func3(f: Int => String) = f(1)
     assert(js(local) === JsIdent("local"))
     assert(js(func1()) === JsCall(JsIdent("func1"), Nil))
-    assert(js(obj.field) === JsSelect(JsIdent("obj"), "field"))
+    val ast = js {
+      val obj = new {
+        val field = 1
+        def func1(i: Int) = field
+        def func2(i: Int) = "string"
+      }
+    }
+    val map = Map("field" -> JsNum(1.0, false), "func1" -> JsAnonFunDecl(List("i"), JsBlock(List(JsReturn(JsSelect(JsIdent("this"), "field"))))), "func2" -> JsAnonFunDecl(List("i"), JsBlock(List(JsReturn(JsString("string"))))))
+    assert(ast === JsBlock(List(JsVarDef("obj", JsAnonObjDecl(map)), JsUnit)))
     assert(js(obj.func2(1)) === JsCall(JsSelect(JsIdent("obj"), "func2"), List(JsNum(1, false))))
     val lambda = JsAnonFunDecl(List("i"), JsBlock(List(JsReturn(JsCall(JsSelect(JsIdent("i"), "toString"), Nil)))))
     assert(js(func3(i => i.toString)) === JsCall(JsIdent("func3"), List(lambda)))
@@ -176,7 +184,6 @@ class ScalaToJsConverterTest extends FunSuite {
         include("console.log(a[1])")
       }
     }
-    println(ast2.asString)
     val jsIf = JsIf(JsBinOp(">", JsSelect(JsIdent("a"), "length"), JsNum(1.0, false)), JsExprStmt(JsRaw("console.log(a[1])")), None)
     assert(ast2 === JsBlock(List(JsVarDef("a", JsRaw("[1, 2]")), jsIf)))
   }
@@ -216,7 +223,6 @@ class ScalaToJsConverterTest extends FunSuite {
       a("field") = a("field2")
     }
     val stmt = JsExprStmt(JsBinOp("=", JsAccess(JsIdent("a"), JsString("field")), JsAccess(JsIdent("a"), JsString("field2"))))
-    println(ast1.asString)
     assert(ast1 === JsBlock(List(JsVarDef("a", JsAnonObjDecl(map)), stmt)))
   }
 }

@@ -9,7 +9,7 @@ object JScalaExample {
       for (idx <- 0 until buttons.length) {
         console.log(buttons.item(idx).attributes)
       }
-    }.print
+    }.asString
     println(html)
   }
 
@@ -19,7 +19,7 @@ object JScalaExample {
       window.open("https://github.com")
       history.back()
     }
-    println(js.print)
+    println(js.asString)
   }
 
   def complexExample() {
@@ -48,7 +48,7 @@ object JScalaExample {
         }
       }, 1000)
     }
-    println(js.print)
+    println(js.asString)
   }
 
   def main(args: Array[String]) {
@@ -57,4 +57,4 @@ object JScalaExample {
     complexExample()
   }
 }
- 
+

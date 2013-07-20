@@ -32,7 +32,6 @@ class JavascriptPrinterTest extends FunSuite {
       val a = Array("1", "2", "3")
       for (i <- a) console.log(i)
     }
-    println(ast.compress)
     assert(ast.compress === """var a=["1","2","3"];
                            |for(i in a){console.log(i)
                            |};""".stripMargin)
