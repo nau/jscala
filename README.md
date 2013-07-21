@@ -22,7 +22,7 @@ Supported Features:
 Examples
 ========
 
-This code 
+This Scala code
 
 ```scala
 val js = javascript {
@@ -103,3 +103,10 @@ println(js.eval())
 ```
     
 That's it!
+
+Feedback
+========
+
+Any feedback is very welcome!
+
+You can use [JScala mailing list](https://groups.google.com/forum/#!forum/jscala-user) if you have any questions.
