@@ -24,6 +24,7 @@ Examples
 
 This code 
 
+    ```scala
     val js = javascript {
       window.setTimeout(() => {
         val r = new RegExp("d.*", "g")
@@ -50,9 +51,11 @@ This code
       }, 1000)
     }
     println(js.asString)
+    ```
 
 will print
 
+    ```javascript
     window.setTimeout((function () {
         var r = new RegExp("d.*", "g");
         function func(i) {
@@ -76,6 +79,7 @@ will print
           window.location.href = links[0].replace("scala", "jscala")
         }
       }), 1000)
+      ```
       
 How To Use
 ==========
@@ -90,10 +94,12 @@ In your build.sbt add
 
 In your code
 
+    ```scala
     import org.jscala._
     val js = javascript { ... }
     println(js.print)
     println(js.compress)
     println(js.eval())
+    ```
     
 That's it!
