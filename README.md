@@ -82,7 +82,10 @@ How To Use
 
 In your build.sbt add
 
+    resolvers += "nau-releases" at "http://nau.github.com/maven-repo/releases"
+
     libraryDependencies += "org.jscala" %% "jscala-macros" % "0.1"
+
     libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
 
 In your code

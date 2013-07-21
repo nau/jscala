@@ -7,6 +7,11 @@ object BuildSettings {
     version := "0.1",
     scalaVersion := "2.10.2",
     resolvers += Resolver.sonatypeRepo("snapshots"),
+    publishTo := Some(Resolver.file("file",  Path.userHome / "projects/maven-repo/releases" )),
+    publishMavenStyle := true,
+    publishArtifact in Test := false,
+    pomIncludeRepository := (_ => false),
+    pomExtra := extraPom,
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
@@ -14,9 +19,30 @@ object BuildSettings {
       "-language:_"
 	)
   )
+
+  def extraPom =
+    <url>http://jscala.org</url>
+      <licenses>
+        <license>
+          <name>MIT</name>
+          <url>http://opensource.org/licenses/MIT</url>
+          <distribution>repo</distribution>
+        </license>
+      </licenses>
+      <scm>
+        <url>git@github.com:nau/jscala.git</url>
+        <connection>scm:git:git@github.com:nau/jscala.git</connection>
+      </scm>
+      <developers>
+        <developer>
+          <id>nau</id>
+          <name>Alexander Nemish</name>
+          <url>http://github.com/nau</url>
+        </developer>
+      </developers>
 }
 
-object MyBuild extends Build {
+object JScalaBuild extends Build {
   import BuildSettings._
 
   lazy val root: Project = Project(
