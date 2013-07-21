@@ -24,62 +24,62 @@ Examples
 
 This code 
 
-    ```scala
-    val js = javascript {
-      window.setTimeout(() => {
-        val r = new RegExp("d.*", "g")
-        def func(i: String) = r.exec(i)
-        val list = document.getElementById("myList2")
-        val map = collection.mutable.Map[String, String]()
-        if (typeof(map) == "string") {
-          for (idx <- 0 until list.attributes.length) {
-            val attr = list.attributes.item(idx).asInstanceOf[Attribute]
-            map(attr.name) = func(attr.textContent).asInstanceOf[String]
-          }
-        } else {
-          val obj = new {
-            val field = 1
-            def func2(i: Int) = "string"
-          }
-          val links = Array("https://github.com/nau/scala")
-          for (link <- links) {
-            include("var raw = 'JavaScript'")
-            console.log(link + obj.func2(obj.field))
-          }
-          window.location.href = links(0).replace("scala", "jscala")
-        }
-      }, 1000)
+```scala
+val js = javascript {
+  window.setTimeout(() => {
+    val r = new RegExp("d.*", "g")
+    def func(i: String) = r.exec(i)
+    val list = document.getElementById("myList2")
+    val map = collection.mutable.Map[String, String]()
+    if (typeof(map) == "string") {
+      for (idx <- 0 until list.attributes.length) {
+        val attr = list.attributes.item(idx).asInstanceOf[Attribute]
+        map(attr.name) = func(attr.textContent).asInstanceOf[String]
+      }
+    } else {
+      val obj = new {
+        val field = 1
+        def func2(i: Int) = "string"
+      }
+      val links = Array("https://github.com/nau/scala")
+      for (link <- links) {
+        include("var raw = 'JavaScript'")
+        console.log(link + obj.func2(obj.field))
+      }
+      window.location.href = links(0).replace("scala", "jscala")
     }
-    println(js.asString)
-    ```
+  }, 1000)
+}
+println(js.asString)
+```
 
 will print
 
-    ```javascript
-    window.setTimeout((function () {
-        var r = new RegExp("d.*", "g");
-        function func(i) {
-          return r.exec(i);
-        };
-        var list = document.getElementById("myList2");
-        var map = {};
-        if ((typeof(map)) == "string") for (var idx = 0; idx < (list.attributes.length); idx++) {
-          var attr = list.attributes.item(idx);
-          (map[attr.name]) = func(attr.textContent)
-        } else {
-          var obj = { field: 1,
-                      func2: (function (i) {
-                          return "string";
-                        })};
-          var links = ["https://github.com/nau/scala"];
-          for (link in links) {
-            var raw = 'JavaScript';
-            console.log((link) + obj.func2(obj.field))
-          };
-          window.location.href = links[0].replace("scala", "jscala")
-        }
-      }), 1000)
-      ```
+```javascript
+window.setTimeout((function () {
+    var r = new RegExp("d.*", "g");
+    function func(i) {
+      return r.exec(i);
+    };
+    var list = document.getElementById("myList2");
+    var map = {};
+    if ((typeof(map)) == "string") for (var idx = 0; idx < (list.attributes.length); idx++) {
+      var attr = list.attributes.item(idx);
+      (map[attr.name]) = func(attr.textContent)
+    } else {
+      var obj = { field: 1,
+                  func2: (function (i) {
+                      return "string";
+                    })};
+      var links = ["https://github.com/nau/scala"];
+      for (link in links) {
+        var raw = 'JavaScript';
+        console.log((link) + obj.func2(obj.field))
+      };
+      window.location.href = links[0].replace("scala", "jscala")
+    }
+  }), 1000)
+```
       
 How To Use
 ==========
@@ -94,12 +94,12 @@ In your build.sbt add
 
 In your code
 
-    ```scala
-    import org.jscala._
-    val js = javascript { ... }
-    println(js.print)
-    println(js.compress)
-    println(js.eval())
-    ```
+```scala
+import org.jscala._
+val js = javascript { ... }
+println(js.print)
+println(js.compress)
+println(js.eval())
+```
     
 That's it!
