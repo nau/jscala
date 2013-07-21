@@ -7,10 +7,10 @@ Scala macro that produces JavaScript from Scala code.
 Supported Features:
 ===================
 * Variable definitions, basic unary and binary operations
-* Named and anonymouse functions
+* Named and anonymous functions
 * Scala Arrays as Javascript Array literals
 * Scala mutable/immutable Map as Javascript object
-* Scala anonymouse classes as Javascript objects
+* Scala anonymous classes as Javascript objects
 * if, while, for..in and for statements
 * Global Javascript functions (parseInt etc)
 * Basic Browser objects (window, history, location etc)
