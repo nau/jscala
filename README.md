@@ -97,7 +97,7 @@ In your code
 ```scala
 import org.jscala._
 val js = javascript { ... }
-println(js.print)
+println(js.asString)
 println(js.compress)
 println(js.eval())
 ```
