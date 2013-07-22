@@ -128,7 +128,7 @@ libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
 
 <div class="highlight"><pre><span class="k">import</span> <span class="nn">org.jscala._</span>
 <span class="k">val</span> <span class="n">js</span> <span class="k">=</span> <span class="n">javascript</span> <span class="o">{</span> <span class="o">...</span> <span class="o">}</span>
-<span class="n">println</span><span class="o">(</span><span class="n">js</span><span class="o">.</span><span class="n">print</span><span class="o">)</span>
+<span class="n">println</span><span class="o">(</span><span class="n">js</span><span class="o">.</span><span class="n">asString</span><span class="o">)</span>
 <span class="n">println</span><span class="o">(</span><span class="n">js</span><span class="o">.</span><span class="n">compress</span><span class="o">)</span>
 <span class="n">println</span><span class="o">(</span><span class="n">js</span><span class="o">.</span><span class="n">eval</span><span class="o">())</span>
 </pre></div>
