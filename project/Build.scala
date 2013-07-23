@@ -4,7 +4,7 @@ import sbt.Keys._
 object BuildSettings {
   val buildSettings = Defaults.defaultSettings ++ Seq(
     organization := "org.jscala",
-    version := "0.1",
+    version := "0.2-SNAPSHOT",
     scalaVersion := "2.10.2",
     resolvers += Resolver.sonatypeRepo("snapshots"),
     publishTo := Some(Resolver.file("file",  Path.userHome / "projects/maven-repo/releases" )),

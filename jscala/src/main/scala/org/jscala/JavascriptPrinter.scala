@@ -31,7 +31,18 @@ object JavascriptPrinter {
       case JsBlock(stmts)                       => s"""{\n${stmts.map(p2(_)).mkString(";\n")}\n${" " * indent}}"""
       case JsExprStmt(jsExpr)                   => p(jsExpr)
       case JsIf(cond, thenp, elsep)             => s"if (${p(cond)}) ${p(thenp)}" + elsep.map(e => s" else ${p(e)}").getOrElse("")
+      case JsSwitch(expr, cases, default)       =>  s"""switch (${p(expr)}) {
+                                                    |${cases.map(p2).mkString("\n")}
+                                                    |${default.map(p2).getOrElse("")}
+                                                    |${" " * indent}}""".stripMargin
+      case JsCase(const, body)                  => s"case ${p(const)}:\n${p2(body)}\n${" " * (indent + 2)}break;"
+      case JsDefault(body)                      => s"default:\n${p2(body)}\n${" " * (indent + 2)}break;"
       case JsWhile(cond, body)                  => s"while (${p(cond)}) ${p(body)}"
+      case JsTry(body, cat, fin)                => s"""try {
+                                                   |  ${p(body)}
+                                                   |}${cat.map(p2).getOrElse("")}
+                                                   |  ${fin.map(f => s"finally {${p2(f)}\n}").getOrElse("")}""".stripMargin
+      case JsCatch(JsIdent(ident), body)        => s"catch($ident) {\n${p2(body)}\n}"
       case JsFor(ident, from, until, body)      => s"for (var ${p(ident)} = ${p(from)}; ${p(ident)} < ${s(until)}; ${p(ident)}++) ${p(body)}"
       case JsForIn(coll, ident, body)           => s"for (${p(ident)} in ${p(coll)}) ${p(body)}"
       case JsVarDef(ident, JsUnit)              => s"var ${ident}"

@@ -266,6 +266,47 @@ package object jscala {
           reify(JsAnonFunDecl(params.splice, body.splice))
       }
 
+      lazy val jsTry: ToExpr[JsTry] = {
+        case Try(body, catchBlock, finBody) =>
+          val ctch = catchBlock match {
+            case Nil => reify(None)
+            case List(CaseDef(Bind(pat, _), EmptyTree, catchBody)) =>
+              reify(Some(JsCatch(JsIdent(c.literal(pat.decoded).splice), jsStmt(catchBody).splice)))
+          }
+          val fin = if (finBody.equalsStructure(EmptyTree)) reify(None)
+            else reify(Some(jsStmt(finBody).splice))
+          reify(JsTry(jsStmt(body).splice, ctch.splice, fin.splice))
+      }
+
+
+      lazy val jsSwitch: ToExpr[JsSwitch] = {
+        case Match(expr, cases) =>
+          val cs = cases collect {
+            case CaseDef(const@Literal(Constant(_)), EmptyTree, body) => List(reify(JsCase(jsLit(const).splice, jsStmt(body).splice)))
+            case CaseDef(Alternative(xs), EmptyTree, body) =>
+              val stmt = jsStmt(body)
+              for (const <- xs) yield reify(JsCase(jsLit(const).splice, stmt.splice))
+          }
+          val df = (cases collect {
+            case CaseDef(Ident(nme.WILDCARD), EmptyTree, body) => reify(Some(JsDefault(jsStmt(body).splice)))
+          }).headOption.getOrElse(reify(None))
+        val css = listToExpr(cs.flatten)
+        reify(JsSwitch(jsExpr(expr).splice, css.splice, df.splice))
+      }
+
+      lazy val jsClassDecl: ToExpr[JsObjDecl] = {
+        case ClassDef(_, clsName, _, Template(_, _, body)) =>
+          val defs = body.collect {
+            case f@DefDef(mods, n, _, argss, _, body) if n != nme.CONSTRUCTOR && !mods.hasFlag(Flags.ACCESSOR.toLong.asInstanceOf[FlagSet]) =>
+              n.decoded -> jsExpr(Function(argss.flatten, body))
+            case ValDef(_, n, _, rhs) =>
+              // For some reason there is an extra space in a field name. Trim it.
+              n.decoded.trim -> jsExpr(rhs)
+          }.toMap
+          val m = mapToExpr(defs)
+          reify(JsObjDecl(m.splice))
+      }
+
       lazy val jsAnonObjDecl: ToExpr[JsAnonObjDecl] = {
         case Block(List(ClassDef(_, clsName, _, Template(_, _, body))), _/* Constructor call */) =>
           val defs = body.collect {
@@ -309,9 +350,12 @@ package object jscala {
         jsBlock,
         jsVarDefStmt,
         jsIfStmt,
+        jsSwitch,
         jsWhileStmt,
+        jsTry,
         jsForStmt,
         jsFunDecl,
+        jsClassDecl,
         jsReturn1,
         jsExprStmt
       ) reduceLeft (_ orElse _)
@@ -324,6 +368,14 @@ package object jscala {
       }
       jsExpr orElse jsStmt apply tree
     }
+  }
+
+  def insert[A] = macro insertImpl[A]
+  def insertImpl[A: c.WeakTypeTag](c: Context) = {
+    import c.universe._
+    val tag = weakTypeTag[A]
+    val decls = tag.tpe.declarations.mkString(",")
+    c.literal(decls)
   }
 
   def javascript(expr: Any): JsAst = macro javascriptImpl

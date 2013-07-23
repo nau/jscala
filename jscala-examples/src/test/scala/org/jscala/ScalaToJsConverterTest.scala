@@ -225,4 +225,46 @@ class ScalaToJsConverterTest extends FunSuite {
     val stmt = JsExprStmt(JsBinOp("=", JsAccess(JsIdent("a"), JsString("field")), JsAccess(JsIdent("a"), JsString("field2"))))
     assert(ast1 === JsBlock(List(JsVarDef("a", JsAnonObjDecl(map)), stmt)))
   }
+
+  test("Switch declaration") {
+    val ast = javascript {
+      val a: Any = "2"
+      a match {
+        case 1 | 2 => "1"
+        case "2" => "2"
+        case true => "true"
+        case _ => "3"
+      }
+    }
+    assert(ast.eval() === "2")
+  }
+
+  test("Try/catch/finally") {
+    val ast = javascript {
+      try { 1 } catch {
+        case  e: Exception => 2
+      }
+    }
+    assert(ast.eval() === 1.0)
+    val ast1 = javascript { try { 1 } finally { 2 } }
+    assert(ast1.eval() === 2.0)
+    val ast2 = javascript {
+      try { 1 } catch {
+        case  e: Exception => 2
+      } finally { 3 }
+    }
+    assert(ast2.eval() === 3.0)
+  }
+
+  test("Object declaration") {
+    class A(arg1: String, arg2: Int = 0) {
+      val field = 1
+      def func1(i: Int) = field
+      def func2(i: Int) = "string"
+    }
+    val ast = javascript {
+      val decls = insert[A]
+    }
+    println(ast.asString)
+  }
 }
