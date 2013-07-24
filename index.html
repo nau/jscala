@@ -124,6 +124,15 @@ libraryDependencies += "org.jscala" %% "jscala-macros" % "0.1"
 libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
 </code></pre>
 
+<p>If you want to try the latest snapshot:</p>
+
+<pre><code>resolvers += Resolver.sonatypeRepo("snapshots")
+
+libraryDependencies += "org.jscala" %% "jscala-macros" % "0.2-SNAPSHOT"
+
+libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
+</code></pre>
+
 <p>In your code</p>
 
 <div class="highlight"><pre><span class="k">import</span> <span class="nn">org.jscala._</span>
