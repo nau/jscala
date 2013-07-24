@@ -101,7 +101,7 @@ object window {
   val top = this
 
   // Displays an alert box with a message and an OK button
-  def alert(s: String) {}
+  def alert(s: Any) {}
 
   // Removes focus from the current window
   def blur() {}

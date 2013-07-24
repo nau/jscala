@@ -11,6 +11,7 @@ object JavascriptPrinter {
       case s => s"(${p(ast)})"
     }
     ast match {
+      case JsLazy(f)                            => p(f())
       case JsBool(value)                        => value.toString
       case JsString(value)                      => "\"" + value + "\""
       case JsNum(value, true)                   => value.toString

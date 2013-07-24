@@ -8,8 +8,8 @@ import scala.reflect.internal.Flags
 
 package object jscala {
   import language.experimental.macros
-
   import scala.reflect.macros.Context
+
   implicit class JsAstOps(ast: JsAst) {
     def asString = JavascriptPrinter.print(ast, 0)
     def eval() = {
@@ -37,6 +37,25 @@ package object jscala {
       buf.toString
     }
   }
+
+  trait JsSerializer[A] {
+    def apply(a: A): JsExpr
+  }
+  implicit object boolJsSerializer extends JsSerializer[Boolean] { def apply(a: Boolean) = JsBool(a) }
+  implicit object byteJsSerializer extends JsSerializer[Byte] { def apply(a: Byte) = JsNum(a, false) }
+  implicit object shortJsSerializer extends JsSerializer[Short] { def apply(a: Short) = JsNum(a, false) }
+  implicit object intJsSerializer extends JsSerializer[Int] { def apply(a: Int) = JsNum(a, false) }
+  implicit object longJsSerializer extends JsSerializer[Long] { def apply(a: Long) = JsNum(a, false) }
+  implicit object floatJsSerializer extends JsSerializer[Float] { def apply(a: Float) = JsNum(a, true) }
+  implicit object doubleJsSerializer extends JsSerializer[Double] { def apply(a: Double) = JsNum(a, true) }
+  implicit object stringJsSerializer extends JsSerializer[String] { def apply(a: String) = JsString(a) }
+  implicit object arrJsSerializer extends JsSerializer[collection.Seq[JsExpr]] { def apply(a: collection.Seq[JsExpr]) = JsArray(a.toList) }
+  implicit object mapJsSerializer extends JsSerializer[collection.Map[String,JsExpr]] { def apply(a: collection.Map[String,JsExpr]) = JsAnonObjDecl(a.toMap) }
+  implicit def funcJsSerializer[A](implicit ev: JsSerializer[A]): JsSerializer[() => A] = new JsSerializer[() => A] { def apply(a: () => A) = ev.apply(a()) }
+  implicit class ToJsExpr[A](a: A)(implicit ev: JsSerializer[A]) {
+    def toJs: JsExpr = ev.apply(a)
+  }
+
 
   class ScalaToJsConverter[C <: Context](val c: C) {
     import c.universe._
@@ -95,8 +114,8 @@ package object jscala {
       def is(p: String) = tree.equalsStructure(select(p)) || tree.equalsStructure(select(p, s => This(newTypeName(s))))
     }
 
-    implicit class NameHelper(name: Name) {
-      def is(n: String) = name == newTermName(n)
+    object Name {
+      def unapply(name: Name) = Some(name.decoded)
     }
 
     def convert(tree: Tree): c.Expr[JsAst] = {
@@ -145,9 +164,9 @@ package object jscala {
       }
 
       lazy val jsMapExpr: ToExpr[JsExpr] = {
-        case Apply(Select(Ident(ident), fn), List(index)) if fn.is("apply") =>
+        case Apply(Select(Ident(ident), Name("apply")), List(index)) =>
           reify(JsAccess(JsIdent(c.literal(ident.decoded).splice), jsExpr(index).splice))
-        case Apply(Select(Ident(ident), fn), List(key, value)) if fn.is("update") =>
+        case Apply(Select(Ident(ident), Name("update")), List(key, value)) =>
           reify(JsBinOp("=", JsAccess(JsIdent(c.literal(ident.decoded).splice), jsExpr(key).splice), jsExpr(value).splice))
         case Apply(TypeApply(path, _), args) if path.is("scala.Predef.Map.apply") =>
           genMap(args)
@@ -156,12 +175,12 @@ package object jscala {
       }
 
       lazy val jsForStmt: ToExpr[JsStmt] = {
-        case Apply(TypeApply(Select(Apply(Select(Apply(fn, List(Literal(Constant(from: Int)))), until), List(untilExpr)), foreach), _), List(Function(List(ValDef(_, index, _, _)), body)))
-          if fn.is("scala.Predef.intWrapper") && until.is("until") && foreach.is("foreach") =>
+        case Apply(TypeApply(Select(Apply(Select(Apply(fn, List(Literal(Constant(from: Int)))), Name("until")), List(untilExpr)), Name("foreach")), _),
+          List(Function(List(ValDef(_, index, _, _)), body))) if fn.is("scala.Predef.intWrapper") =>
           val forBody = jsStmt(body)
           reify(JsFor(JsIdent(c.literal(index.decoded).splice), JsNum(c.literal(from).splice, false), jsExpr(untilExpr).splice, forBody.splice))
-        case Apply(TypeApply(Select(Apply(TypeApply(path, _), List(Ident(coll))), fn), _), List(Function(List(ValDef(_, ident, _, _)), body)))
-          if path.is("scala.Predef.refArrayOps") && fn.is("foreach") =>
+        case Apply(TypeApply(Select(Apply(TypeApply(path, _), List(Ident(coll))), Name("foreach")), _), List(Function(List(ValDef(_, ident, _, _)), body)))
+          if path.is("scala.Predef.refArrayOps") =>
           val forBody = jsStmt(body)
           reify(JsForIn(JsIdent(c.literal(coll.decoded).splice), JsIdent(c.literal(ident.decoded).splice), forBody.splice))
       }
@@ -185,16 +204,19 @@ package object jscala {
       }
 
       lazy val jsGlobalFuncsExpr: ToExpr[JsExpr] = {
-        case TypeApply(Select(expr, fn), _) if fn.is("asInstanceOf") => jsExpr(expr)
+        case TypeApply(Select(expr, Name("asInstanceOf")), _) => jsExpr(expr)
         case Apply(path, List(Literal(Constant(js: String)))) if path.is("jscala.package.include") =>
           reify(JsRaw(c.literal(js).splice))
+        case app@Apply(Apply(TypeApply(path, _), List(ident)), List(jss)) if path.is("jscala.package.inject") =>
+          val call = c.Expr[JsExpr](Apply(jss, List(ident)))
+          reify(JsLazy(() => call.splice))
         case Apply(Select(path, fn), args) if path.is("jscala.package") =>
           val params = listToExpr(args map jsExpr)
           reify(JsCall(JsIdent(c.literal(fn.decoded).splice), params.splice))
       }
 
       lazy val jsJStringExpr: ToExpr[JsExpr] = {
-        case Apply(Select(New(Ident(jstring)), _), List(Literal(Constant(str: String)))) if jstring == newTypeName("JString") =>
+        case Apply(Select(New(Ident(Name("JString"))), _), List(Literal(Constant(str: String)))) =>
           reify(JsString(c.literal(str).splice))
       }
 
@@ -370,15 +392,9 @@ package object jscala {
     }
   }
 
-  def insert[A] = macro insertImpl[A]
-  def insertImpl[A: c.WeakTypeTag](c: Context) = {
-    import c.universe._
-    val tag = weakTypeTag[A]
-    val decls = tag.tpe.declarations.mkString(",")
-    c.literal(decls)
-  }
+  def inject[A](a: A)(implicit jss: JsSerializer[A]) = a
 
-  def javascript(expr: Any): JsAst = macro javascriptImpl
+  def javascript[A](expr: A): JsAst = macro javascriptImpl
   def javascriptImpl(c: Context)(expr: c.Expr[Any]) = {
     val parser = new ScalaToJsConverter[c.type](c)
     parser.convert(expr.tree)

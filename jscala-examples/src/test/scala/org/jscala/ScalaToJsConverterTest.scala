@@ -2,6 +2,7 @@ package org.jscala
 
 import org.scalatest.FunSuite
 import org.jscala.{javascript=>js}
+import scala.util.Random
 
 class ScalaToJsConverterTest extends FunSuite {
   test("Literals") {
@@ -263,8 +264,26 @@ class ScalaToJsConverterTest extends FunSuite {
       def func2(i: Int) = "string"
     }
     val ast = javascript {
-      val decls = insert[A]
     }
     println(ast.asString)
+  }
+
+  test("Lazy") {
+    val x = 15
+    val y = "hehe"
+    def f() = "1"
+    case class My(a: String)
+    implicit def zzz: JsSerializer[My] = new JsSerializer[My] { def apply(a: My) = JsString(a.a) }
+    val z = My("my")
+    val ls = Seq(1, 2, 3).map(_.toJs)
+    val ast = javascript {
+      val a = inject(x)
+      val b = inject(y)
+      val c = inject(z)
+      val d = inject(f _)
+      val e = inject(ls)
+      a.asInstanceOf[String] + b + c + d + e.toString()
+    }
+    assert(ast.eval() === "15hehemy11,2,3")
   }
 }

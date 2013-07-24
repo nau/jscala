@@ -14,6 +14,7 @@ case class JsNum(value: Double, isFloat: Boolean) extends JsLit
 case class JsArray(values: List[JsExpr]) extends JsLit
 case object JsUnit extends JsLit with JsStmt
 
+case class JsLazy(ast: () => JsExpr) extends JsExpr
 case class JsIdent(ident: String) extends JsExpr
 case class JsRaw(js: String) extends JsExpr
 case class JsAccess(qualifier: JsExpr, key: JsExpr) extends JsExpr
