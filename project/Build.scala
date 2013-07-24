@@ -2,12 +2,15 @@ import sbt._
 import sbt.Keys._
 
 object BuildSettings {
+  val ossSnapshots = "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
+  val ossStaging   = "Sonatype OSS Staging" at "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
   val buildSettings = Defaults.defaultSettings ++ Seq(
     organization := "org.jscala",
     version := "0.2-SNAPSHOT",
     scalaVersion := "2.10.2",
     resolvers += Resolver.sonatypeRepo("snapshots"),
-    publishTo := Some(Resolver.file("file",  Path.userHome / "projects/maven-repo/releases" )),
+    credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
+    publishTo <<= version((v: String) => Some( if (v.trim endsWith "SNAPSHOT") ossSnapshots else ossStaging)),
     publishMavenStyle := true,
     publishArtifact in Test := false,
     pomIncludeRepository := (_ => false),
@@ -70,3 +73,4 @@ object JScalaBuild extends Build {
     )
   ) dependsOn(jscala)
 }
+
