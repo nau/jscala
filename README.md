@@ -91,6 +91,14 @@ In your build.sbt add
     libraryDependencies += "org.jscala" %% "jscala-macros" % "0.1"
 
     libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
+    
+If you want to try the latest snapshot:
+
+    resolvers += Resolver.sonatypeRepo("snapshots")
+
+    libraryDependencies += "org.jscala" %% "jscala-macros" % "0.2-SNAPSHOT"
+
+    libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
 
 In your code
 
