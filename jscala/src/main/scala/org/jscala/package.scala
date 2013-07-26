@@ -230,6 +230,8 @@ package object jscala {
         case Apply(Select(lhs, name), List(rhs)) if name.decoded.endsWith("_=") =>
           reify(JsBinOp("=", JsSelect(jsExpr(lhs).splice, c.literal(name.decoded.dropRight(2)).splice), jsExpr(rhs).splice))
         case Apply(fun, args) =>
+//          println("Annots: " + fun.symbol.asMethod.annotations)
+//          println("Annots1: " + fun.tpe.typeSymbol.annotations)
           val callee = jsExpr apply fun
           val filteredDefaults = args collect {
             case arg@Select(_, n) if n.decoded.contains("$default$") => None
@@ -394,7 +396,7 @@ package object jscala {
 
   def inject[A](a: A)(implicit jss: JsSerializer[A]) = a
 
-  def javascript[A](expr: A): JsAst = macro javascriptImpl
+  def javascript(expr: Any): JsAst = macro javascriptImpl
   def javascriptImpl(c: Context)(expr: c.Expr[Any]) = {
     val parser = new ScalaToJsConverter[c.type](c)
     parser.convert(expr.tree)

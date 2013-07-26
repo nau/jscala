@@ -65,12 +65,20 @@ object JScalaBuild extends Build {
     )
   )
 
+  lazy val liftweb: Project = Project(
+    "jscala-lift",
+    file("jscala-lift"),
+    settings = buildSettings ++ Seq(
+      libraryDependencies ++= Seq("net.liftweb" %% "lift-webkit" % "2.5" % "compile")
+    )
+  ) dependsOn(jscala)
+
   lazy val examples: Project = Project(
     "jscala-examples",
     file("jscala-examples"),
     settings = buildSettings ++ Seq(
       libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "1.9.1" % "test")
     )
-  ) dependsOn(jscala)
+  ) dependsOn(jscala, liftweb)
 }
 
