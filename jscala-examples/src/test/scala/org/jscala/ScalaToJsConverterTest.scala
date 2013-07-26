@@ -2,7 +2,6 @@ package org.jscala
 
 import org.scalatest.FunSuite
 import org.jscala.{javascript=>js}
-import scala.util.Random
 
 class ScalaToJsConverterTest extends FunSuite {
   test("Literals") {
@@ -258,14 +257,17 @@ class ScalaToJsConverterTest extends FunSuite {
   }
 
   test("Object declaration") {
-    class A(arg1: String, arg2: Int = 0) {
-      val field = 1
-      def func1(i: Int) = field
-      def func2(i: Int) = "string"
-    }
     val ast = javascript {
+      class A(val arg1: String, var arg2: Int, arg3: Array[String]) {
+        val field = 1
+        def func1(i: Int) = field
+        def func2(i: Int) = arg3(0)
+      }
+      val a = new A("a", 1, Array(""))
+      a.arg1 + a.func2(a.arg2)
     }
     println(ast.asString)
+    println(ast.eval())
   }
 
   test("Lazy") {

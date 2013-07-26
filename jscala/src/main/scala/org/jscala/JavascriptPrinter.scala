@@ -39,10 +39,10 @@ object JavascriptPrinter {
       case JsCase(const, body)                  => s"case ${p(const)}:\n${p2(body)}\n${" " * (indent + 2)}break;"
       case JsDefault(body)                      => s"default:\n${p2(body)}\n${" " * (indent + 2)}break;"
       case JsWhile(cond, body)                  => s"while (${p(cond)}) ${p(body)}"
-      case JsTry(body, cat, fin)                => s"""try {
-                                                   |  ${p(body)}
-                                                   |}${cat.map(p2).getOrElse("")}
-                                                   |  ${fin.map(f => s"finally {${p2(f)}\n}").getOrElse("")}""".stripMargin
+      case JsTry(body, cat, fin)                =>
+        val (b, c, f) = (p(body), cat.map(p2).getOrElse(""), fin.map(f => s"finally {${p2(f)}\n}").getOrElse(""))
+                                                   s"try { $b \n} $c \n $f"
+
       case JsCatch(JsIdent(ident), body)        => s"catch($ident) {\n${p2(body)}\n}"
       case JsFor(ident, from, until, body)      => s"for (var ${p(ident)} = ${p(from)}; ${p(ident)} < ${s(until)}; ${p(ident)}++) ${p(body)}"
       case JsForIn(coll, ident, body)           => s"for (${p(ident)} in ${p(coll)}) ${p(body)}"
@@ -51,6 +51,10 @@ object JavascriptPrinter {
       case JsFunDecl(ident, params, body)       => s"""function ${ident}(${params.mkString(", ")}) ${p(body)}"""
       case JsAnonFunDecl(params, body)          => s"""(function (${params.mkString(", ")}) ${p(body)})""" // Wrap in parens to allow easy IIFEs
       case JsAnonObjDecl(fields)                => fields.map{ case (k, v) => s""" $k: ${p(v)}"""}.mkString("{", ",\n", "}")
+      case JsObjDecl(JsFunDecl(name, params, stmt), fields)              =>
+        val fs = (for ((n, v) <- fields) yield s"this.$n = ${p(v)}").mkString(";\n")
+        val body = p2(stmt) + fs
+        s"""function ${name}(${params.mkString(", ")}) { $body \n}"""
       case JsReturn(jsExpr)                     => s"return ${p(jsExpr)};"
       case JsUnit                               => ""
     }

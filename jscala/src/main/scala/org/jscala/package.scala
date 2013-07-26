@@ -119,6 +119,7 @@ package object jscala {
     }
 
     def convert(tree: Tree): c.Expr[JsAst] = {
+//      println((tree))
 //      println(showRaw(tree))
 
       lazy val jsThis: ToExpr[JsIdent] = {
@@ -317,20 +318,35 @@ package object jscala {
       }
 
       lazy val jsClassDecl: ToExpr[JsObjDecl] = {
-        case ClassDef(_, clsName, _, Template(_, _, body)) =>
+        case cd@ClassDef(_, clsName, _, Template(_, _, body)) =>
+          println("ClassDecl " + cd)
+          println("ClassDecl " + showRaw(cd))
+          val ctor = body.collect {
+            case f@DefDef(mods, n, _, argss, _, Block(stats, _)) if n == nme.CONSTRUCTOR =>
+              val a = argss.headOption.map(vp => vp.map(v => c.literal(v.name.decoded))).getOrElse(Nil)
+              val params = listToExpr(a)
+              // drop super.<init>() call
+              val body = jsFunBody(Block(stats.drop(1), c.literalUnit.tree))
+              reify(JsFunDecl(c.literal(clsName.decoded).splice, params.splice, body.splice))
+          }
+          val fields = body.collect {
+            case ValDef(mods, n, _, rhs) if mods.hasFlag(Flags.PARAMACCESSOR.toLong.asInstanceOf[FlagSet]) =>
+              // For some reason there is an extra space in a field name. Trim it.
+              Some(n.decoded.trim -> jsExpr(rhs))
+          }
           val defs = body.collect {
             case f@DefDef(mods, n, _, argss, _, body) if n != nme.CONSTRUCTOR && !mods.hasFlag(Flags.ACCESSOR.toLong.asInstanceOf[FlagSet]) =>
-              n.decoded -> jsExpr(Function(argss.flatten, body))
-            case ValDef(_, n, _, rhs) =>
-              // For some reason there is an extra space in a field name. Trim it.
-              n.decoded.trim -> jsExpr(rhs)
-          }.toMap
+              Some(n.decoded -> jsExpr(Function(argss.flatten, body)))
+            case ValDef(_, n, _, EmptyTree) => None
+
+          }.flatten.toMap
           val m = mapToExpr(defs)
-          reify(JsObjDecl(m.splice))
+          reify(JsObjDecl(ctor.head.splice, m.splice))
       }
 
       lazy val jsAnonObjDecl: ToExpr[JsAnonObjDecl] = {
         case Block(List(ClassDef(_, clsName, _, Template(_, _, body))), _/* Constructor call */) =>
+          println("jsAnonObjDecl")
           val defs = body.collect {
             case f@DefDef(mods, n, _, argss, _, body) if n != nme.CONSTRUCTOR && !mods.hasFlag(Flags.ACCESSOR.toLong.asInstanceOf[FlagSet]) =>
               n.decoded -> jsExpr(Function(argss.flatten, body))
@@ -415,7 +431,7 @@ package object jscala {
   def isFinite(uri: AnyRef) = false
   def isNaN(uri: AnyRef) = false
   def parseFloat(str: String) = 1.0
-  def parseInt()(str: String) = 1
+  def parseInt(str: String) = 1
   def typeof(x: Any) = ""
   def include(js: String) = ""
 }
