@@ -289,29 +289,13 @@ class ScalaToJsConverterTest extends FunSuite {
     assert(ast.eval() === "15hehemy11,2,3")
   }
 
+
   test("Ajax") {
     import Lift._
-    val input = 1
-    //    val funcs = new collection.mutable.HashMap[String, JsAst => JsAst]()
-    //    def ajaxCall(uid: String, input: String, callback: String => Unit) {}
-    //    def callScala[A, B](a: A)(f: A => B, jsf: JsAst) = {
-    //      val uid = Random.nextString(10)
-    //      val h = (s: JsAst) => f(s.asInstanceOf[A]).toJs
-    //      funcs += uid -> h
-    //      javascript {
-    //        ajaxCall(inject(uid), inject(input.toString()), jsf)
-    //      }
-    //    }
-
-    /*callScala(input)(
-    { x: Int => Thread.sleep(2000); x * x },
-    { x: Int => window.alert("The server returned: "+x) }
-    )*/
-
-    //    val ast = javascript { x: Int => window.alert("The server returned: "+x) }
-    //    callScala(input)({ x: Int => Thread.sleep(2000); x * x }, ast)
-    //    asdf(1)(input + 2)
-//    val a = liftAjax(document.getElementById("id").text)(s => javascript("1"))
-//    println(a)
+    def doServerStuff(s: Int) = s.toString
+    liftAjax(parseInt(document.getElementById("id").text)) { s =>
+      val result = doServerStuff(s)
+      javascript(window.alert("Server returned " + inject(result)))
+    }
   }
 }

@@ -417,7 +417,7 @@ package object jscala {
   def isFinite(uri: AnyRef) = false
   def isNaN(uri: AnyRef) = false
   def parseFloat(str: String) = 1.0
-  def parseInt()(str: String) = 1
+  def parseInt(str: String) = 1
   def typeof(x: Any) = ""
   def include(js: String) = ""
 }
