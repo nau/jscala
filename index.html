@@ -117,7 +117,9 @@
 
 <p>In your build.sbt add</p>
 
-<pre><code>resolvers += "nau-releases" at "http://nau.github.com/maven-repo/releases"
+<pre><code>scalaVersion := "2.10.2"
+
+resolvers += "nau-releases" at "http://nau.github.com/maven-repo/releases"
 
 libraryDependencies += "org.jscala" %% "jscala-macros" % "0.1"
 
@@ -126,7 +128,9 @@ libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
 
 <p>If you want to try the latest snapshot:</p>
 
-<pre><code>resolvers += Resolver.sonatypeRepo("snapshots")
+<pre><code>scalaVersion := "2.10.2"
+
+resolvers += Resolver.sonatypeRepo("snapshots")
 
 libraryDependencies += "org.jscala" %% "jscala-macros" % "0.2-SNAPSHOT"
 
