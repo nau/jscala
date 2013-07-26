@@ -86,6 +86,8 @@ How To Use
 
 In your build.sbt add
 
+    scalaVersion := "2.10.2"
+
     resolvers += "nau-releases" at "http://nau.github.com/maven-repo/releases"
 
     libraryDependencies += "org.jscala" %% "jscala-macros" % "0.1"
@@ -93,6 +95,8 @@ In your build.sbt add
     libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
     
 If you want to try the latest snapshot:
+
+    scalaVersion := "2.10.2"
 
     resolvers += Resolver.sonatypeRepo("snapshots")
 
