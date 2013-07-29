@@ -41,5 +41,5 @@ case class JsDefault(body: JsStmt) extends JsSwitchable
 case class JsSwitch(expr: JsExpr, cases: List[JsCase], default: Option[JsDefault]) extends JsStmt
 case class JsVarDef(ident: String, initializer: JsExpr) extends JsStmt
 case class JsFunDecl(ident: String, params: List[String], body: JsStmt) extends JsStmt
-case class JsObjDecl(ctor: JsFunDecl, fields: Map[String, JsExpr]) extends JsStmt
+case class JsObjDecl(name: String, params: List[String], fields: List[(String, JsExpr)]) extends JsStmt
 case class JsReturn(jsExpr: JsExpr) extends JsStmt

@@ -202,6 +202,9 @@ package object jscala {
         case Apply(path, args) if path.is("scala.Array.apply") =>
           val params = listToExpr(args map jsExpr)
           reify(JsArray(params.splice))
+        case Apply(Select(path, Name("apply")), List(idx)) if path.symbol.typeSignature.typeConstructor.toString == "Array" =>
+          println("Apply " + path.symbol.typeSignature.typeConstructor + " -> " + idx.tpe)
+          reify(JsAccess(jsExpr(path).splice, jsExpr(idx).splice))
       }
 
       lazy val jsGlobalFuncsExpr: ToExpr[JsExpr] = {
@@ -317,43 +320,33 @@ package object jscala {
         reify(JsSwitch(jsExpr(expr).splice, css.splice, df.splice))
       }
 
+      lazy val objectFields: PFT[(String, Expr[JsExpr])] = {
+        case f@DefDef(mods, n, _, argss, _, body) if n != nme.CONSTRUCTOR && !mods.hasFlag(Flags.ACCESSOR.toLong.asInstanceOf[FlagSet]) => n.decoded -> jsExpr(Function(argss.flatten, body))
+        case ValDef(mods, n, _, rhs) if !rhs.equalsStructure(EmptyTree) && !mods.hasFlag(Flags.PARAMACCESSOR.toLong.asInstanceOf[FlagSet]) => n.decoded.trim -> jsExpr(rhs)
+      }
+
       lazy val jsClassDecl: ToExpr[JsObjDecl] = {
         case cd@ClassDef(_, clsName, _, Template(_, _, body)) =>
           println("ClassDecl " + cd)
           println("ClassDecl " + showRaw(cd))
           val ctor = body.collect {
             case f@DefDef(mods, n, _, argss, _, Block(stats, _)) if n == nme.CONSTRUCTOR =>
-              val a = argss.headOption.map(vp => vp.map(v => c.literal(v.name.decoded))).getOrElse(Nil)
-              val params = listToExpr(a)
-              // drop super.<init>() call
-              val body = jsFunBody(Block(stats.drop(1), c.literalUnit.tree))
-              reify(JsFunDecl(c.literal(clsName.decoded).splice, params.splice, body.splice))
+              val a = argss.headOption.map(vp => vp.map(v => v.name.decoded)).getOrElse(Nil)
+              a
           }
-          val fields = body.collect {
-            case ValDef(mods, n, _, rhs) if mods.hasFlag(Flags.PARAMACCESSOR.toLong.asInstanceOf[FlagSet]) =>
-              // For some reason there is an extra space in a field name. Trim it.
-              Some(n.decoded.trim -> jsExpr(rhs))
-          }
-          val defs = body.collect {
-            case f@DefDef(mods, n, _, argss, _, body) if n != nme.CONSTRUCTOR && !mods.hasFlag(Flags.ACCESSOR.toLong.asInstanceOf[FlagSet]) =>
-              Some(n.decoded -> jsExpr(Function(argss.flatten, body)))
-            case ValDef(_, n, _, EmptyTree) => None
-
-          }.flatten.toMap
-          val m = mapToExpr(defs)
-          reify(JsObjDecl(ctor.head.splice, m.splice))
+          if (ctor.size != 1) c.abort(c.enclosingPosition, "Only single primary constructor is currently supported. Sorry.")
+          val init = ctor.head.map(f => f -> reify(JsIdent(c.literal(f).splice)))
+          val defs = body.collect(objectFields)
+          val fields = init ::: defs
+          val fs = listToExpr(fields.map { case (n, v) => reify((c.literal(n).splice, v.splice)) })
+          val args = listToExpr(ctor.head.map(arg => c.literal(arg)))
+          reify(JsObjDecl(c.literal(clsName.decoded).splice, args.splice, fs.splice))
       }
 
       lazy val jsAnonObjDecl: ToExpr[JsAnonObjDecl] = {
         case Block(List(ClassDef(_, clsName, _, Template(_, _, body))), _/* Constructor call */) =>
           println("jsAnonObjDecl")
-          val defs = body.collect {
-            case f@DefDef(mods, n, _, argss, _, body) if n != nme.CONSTRUCTOR && !mods.hasFlag(Flags.ACCESSOR.toLong.asInstanceOf[FlagSet]) =>
-              n.decoded -> jsExpr(Function(argss.flatten, body))
-            case ValDef(_, n, _, rhs) =>
-              // For some reason there is an extra space in a field name. Trim it.
-              n.decoded.trim -> jsExpr(rhs)
-          }.toMap
+          val defs = body.collect(objectFields).toMap
           val m = mapToExpr(defs)
           reify(JsAnonObjDecl(m.splice))
       }
@@ -411,7 +404,7 @@ package object jscala {
   def inject[A](a: A)(implicit jss: JsSerializer[A]) = a
 
   def javascript[A](expr: A): JsAst = macro javascriptImpl
-  def javascriptImpl(c: Context)(expr: c.Expr[Any]) = {
+  def javascriptImpl(c: Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
     val parser = new ScalaToJsConverter[c.type](c)
     parser.convert(expr.tree)
   }

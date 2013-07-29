@@ -262,6 +262,8 @@ class ScalaToJsConverterTest extends FunSuite {
         val field = 1
         def func1(i: Int) = field
         def func2(i: Int) = arg3(0)
+        def func3() = arg3
+        def func4 = func3()(0)
       }
       val a = new A("a", 1, Array(""))
       a.arg1 + a.func2(a.arg2)

@@ -51,10 +51,10 @@ object JavascriptPrinter {
       case JsFunDecl(ident, params, body)       => s"""function ${ident}(${params.mkString(", ")}) ${p(body)}"""
       case JsAnonFunDecl(params, body)          => s"""(function (${params.mkString(", ")}) ${p(body)})""" // Wrap in parens to allow easy IIFEs
       case JsAnonObjDecl(fields)                => fields.map{ case (k, v) => s""" $k: ${p(v)}"""}.mkString("{", ",\n", "}")
-      case JsObjDecl(JsFunDecl(name, params, stmt), fields)              =>
-        val fs = (for ((n, v) <- fields) yield s"this.$n = ${p(v)}").mkString(";\n")
-        val body = p2(stmt) + fs
-        s"""function ${name}(${params.mkString(", ")}) { $body \n}"""
+      case JsObjDecl(name, params, fields)              =>
+        val fs = (for ((n, v) <- fields) yield " " * (indent + 2) + s"this.$n = ${p(v)}").mkString(";\n")
+        val body = fs
+        s"""function ${name}(${params.mkString(", ")}) {\n$body\n}"""
       case JsReturn(jsExpr)                     => s"return ${p(jsExpr)};"
       case JsUnit                               => ""
     }
