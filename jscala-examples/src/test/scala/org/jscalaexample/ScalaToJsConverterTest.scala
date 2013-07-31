@@ -75,10 +75,23 @@ class ScalaToJsConverterTest extends FunSuite {
       }
     }
     val map = Map("field" -> JsNum(1.0, false), "func1" -> JsAnonFunDecl(List("i"), JsBlock(List(JsReturn(JsSelect(JsIdent("this"), "field"))))), "func2" -> JsAnonFunDecl(List("i"), JsBlock(List(JsReturn(JsString("string"))))))
-    assert(ast === JsBlock(List(JsVarDef("obj", JsAnonObjDecl(map)), JsUnit)))
+    assert(ast === JsBlock(List(JsVarDef("obj", JsAnonObjDecl(map)))))
     assert(js(obj.func2(1)) === JsCall(JsSelect(JsIdent("obj"), "func2"), List(JsNum(1, false))))
     val lambda = JsAnonFunDecl(List("i"), JsBlock(List(JsReturn(JsCall(JsSelect(JsIdent("i"), "toString"), Nil)))))
     assert(js(func3(i => i.toString)) === JsCall(JsIdent("func3"), List(lambda)))
+
+    val ifExprAst = js {
+      var a = if (inject(local) > 1) 2 else 3
+      val b = if (inject(local) > 1) {
+        a += 1
+        a
+      } else {
+        a += 2
+        a
+      }
+      a + b
+    }
+    assert(ifExprAst.eval() === 10)
   }
 
   test("Simple statements") {
@@ -92,8 +105,8 @@ class ScalaToJsConverterTest extends FunSuite {
     val jc = JsIdent("c")
     val jd = JsIdent("d")
     val jss = JsIdent("s")
-    assert(js { val a = 0 } === JsBlock(List(JsVarDef("a", JsNum(0, false)), JsUnit)))
-    assert(js { val a = b + 2 } === JsBlock(List(JsVarDef("a", JsBinOp("+", JsIdent("b"), JsNum(2, false))), JsUnit)))
+    assert(js { val a = 0 } === JsBlock(List(JsVarDef("a", JsNum(0, false)))))
+    assert(js { val a = b + 2 } === JsBlock(List(JsVarDef("a", JsBinOp("+", JsIdent("b"), JsNum(2, false))))))
     assert(js { if (a > 0) b } === JsIf(JsBinOp(">", ja, JsNum(0, false)), JsExprStmt(jb), None))
     assert(js { if (a > 0) b else a } === JsIf(JsBinOp(">", ja, JsNum(0, false)), JsExprStmt(jb), Some(JsExprStmt(ja))))
     assert(js { while (a > 0) b } === JsWhile(JsBinOp(">", ja, JsNum(0, false)), JsExprStmt(jb)))
@@ -105,14 +118,14 @@ class ScalaToJsConverterTest extends FunSuite {
         a = a + 1
       } } === expected)
 
-    assert(js { def func1() {} } === JsBlock(List(JsFunDecl("func1", Nil, JsBlock(Nil)), JsUnit)))
-    assert(js { def func2 = 5 } === JsBlock(List(JsFunDecl("func2", Nil, JsBlock(List(JsReturn(JsNum(5.0,false))))), JsUnit)))
-    assert(js { def func3() = 5 } === JsBlock(List(JsFunDecl("func3", Nil, JsBlock(List(JsReturn(JsNum(5.0,false))))), JsUnit)))
-    assert(js { def func4(a: String) = 5 } === JsBlock(List(JsFunDecl("func4", List("a"), JsBlock(List(JsReturn(JsNum(5.0,false))))), JsUnit)))
+    assert(js { def func1() {} } === JsBlock(List(JsFunDecl("func1", Nil, JsBlock(Nil)))))
+    assert(js { def func2 = 5 } === JsBlock(List(JsFunDecl("func2", Nil, JsBlock(List(JsReturn(JsNum(5.0,false))))))))
+    assert(js { def func3() = 5 } === JsBlock(List(JsFunDecl("func3", Nil, JsBlock(List(JsReturn(JsNum(5.0,false))))))))
+    assert(js { def func4(a: String) = 5 } === JsBlock(List(JsFunDecl("func4", List("a"), JsBlock(List(JsReturn(JsNum(5.0,false))))))))
     val ifElse = Some(JsBlock(List(JsVarDef("c", JsBinOp("*", jb, JsNum(2.0, true))), JsExprStmt(JsUnOp("-", jc)))))
     val jsIf = JsIf(JsBinOp(">", ja, JsNum(2.0, false)), JsExprStmt(JsBinOp("*", JsBinOp("+", ja, jb), JsNum(2.0, false))), ifElse)
     val bodyfunc5 = JsBlock(List(JsVarDef("b", JsNum(5.0, true)), jsIf))
-    val expectedFunc5 = JsBlock(List(JsFunDecl("func5", List("a"), bodyfunc5), JsUnit))
+    val expectedFunc5 = JsBlock(List(JsFunDecl("func5", List("a"), bodyfunc5)))
     assert(js {
       def func5(a: Int) = {
         val b = 5.0
@@ -131,7 +144,7 @@ class ScalaToJsConverterTest extends FunSuite {
       if (a.length > 2) return else {
         console.log("a")
       }
-    } } === JsBlock(List(JsFunDecl("func6",List("a"),func6Body), JsUnit)))
+    } } === JsBlock(List(JsFunDecl("func6",List("a"),func6Body))))
     val stmt = JsExprStmt(JsCall(JsSelect(JsIdent("console"), "log"), List(JsAccess(JsIdent("a"), JsIdent("i")))))
     val jsFor = JsFor(JsIdent("i"), JsNum(0.0, false), JsSelect(JsIdent("a"), "length"), stmt)
     assert(js {

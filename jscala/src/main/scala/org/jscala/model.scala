@@ -43,3 +43,4 @@ case class JsVarDef(ident: String, initializer: JsExpr) extends JsStmt
 case class JsFunDecl(ident: String, params: List[String], body: JsStmt) extends JsStmt
 case class JsObjDecl(name: String, params: List[String], fields: List[(String, JsExpr)]) extends JsStmt
 case class JsReturn(jsExpr: JsExpr) extends JsStmt
+case class JsStmts(stmts: List[JsStmt]) extends JsStmt

@@ -279,11 +279,28 @@ package object jscala {
           reify(JsWhile(condJsExpr.splice, bodyJsStmt.splice))
       }
 
-      lazy val jsVarDefStmt: ToExpr[JsVarDef] = {
+      def addAssign(tree: Tree, name: Name) = tree match {
+        case Block(stats, expr) => Block(stats :+ Assign(Ident(name), expr), c.literalUnit.tree)
+        case expr => Block(Assign(Ident(name), expr) :: Nil, c.literalUnit.tree)
+      }
+
+      lazy val jsIfExpr: PartialFunction[(Name, Tree), Expr[JsIf]] = {
+        case (name, If(cond, thenp, elsep)) =>
+          val condJsExpr = jsExpr(cond)
+          val thenJsExpr = jsStmt(addAssign(thenp, name))
+          val elseJsExpr = jsStmt(addAssign(elsep, name))
+          reify(JsIf(condJsExpr.splice, thenJsExpr.splice, Some(elseJsExpr.splice)))
+      }
+
+      lazy val jsVarDefStmt: ToExpr[JsStmt] = {
         case ValDef(_, name, _, rhs) =>
           val identifier = c.literal(name.decoded)
-          val initializer = jsExpr(rhs)
-          reify(JsVarDef(identifier.splice, initializer.splice))
+          val x = name -> rhs
+          if (jsIfExpr.isDefinedAt(x)) {
+            reify(JsStmts(List(JsVarDef(identifier.splice, JsUnit), jsIfExpr(x).splice)))
+          } else {
+            reify(JsVarDef(identifier.splice, jsExpr(rhs).splice))
+          }
       }
 
       lazy val jsFunBody: ToExpr[JsBlock] = {
@@ -376,6 +393,13 @@ package object jscala {
       lazy val jsReturn: ToExpr[JsStmt] = jsReturnStmt orElse jsStmt
       lazy val jsReturnStmt: ToExpr[JsReturn] = jsExpr andThen (jsExpr => reify(JsReturn(jsExpr.splice)))
 
+      lazy val jsBlock: ToExpr[JsBlock] = {
+        case Block(stmts, expr) =>
+          val stmtTrees = if (expr.equalsStructure(c.literalUnit.tree)) stmts else stmts :+ expr
+          val ss = listToExpr(stmtTrees map jsStmt)
+          reify(JsBlock(ss.splice))
+      }
+
       lazy val jsExpr: ToExpr[JsExpr] = Seq(
         jsLit,
         jsUnaryOp,
@@ -409,19 +433,13 @@ package object jscala {
         jsExprStmt
       ) reduceLeft (_ orElse _)
 
-      lazy val jsBlock: ToExpr[JsBlock] = {
-        case Block(stmts, expr) =>
-          val stmtTrees = stmts :+ expr
-          val ss = listToExpr(stmtTrees map jsStmt)
-          reify(JsBlock(ss.splice))
-      }
       jsExpr orElse jsStmt apply tree
     }
   }
 
   def inject[A](a: A)(implicit jss: JsSerializer[A]) = a
 
-  def javascript[A](expr: A): JsAst = macro javascriptImpl
+  def javascript(expr: Any): JsAst = macro javascriptImpl
   def javascriptImpl(c: Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
     val parser = new ScalaToJsConverter[c.type](c)
     parser.convert(expr.tree)

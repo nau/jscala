@@ -2,10 +2,11 @@ package org.jscala
 
 object JavascriptPrinter {
   def print(ast: JsAst, indent: Int): String = {
-    def p(ast: JsAst) = print(ast, indent)
     def ind(c: Int = 0) = " " * (indent + c)
+    def p(ast: JsAst) = print(ast, indent)
     def p2(ast: JsAst) = ind(2) + print(ast, indent + 2)
     def p3(ast: JsAst) = print(ast, indent + 2)
+    def p4(ast: JsAst) = ind() + p(ast)
     def s(ast: JsAst) = ast match {
       case _: JsLit => p(ast)
       case _: JsIdent => p(ast)
@@ -60,6 +61,7 @@ object JavascriptPrinter {
         s"""function $name(${params.mkString(", ")}) {\n$body\n${ind()}}"""
       case JsReturn(jsExpr)                     => s"return ${p(jsExpr)}"
       case JsUnit                               => ""
+      case JsStmts(stmts)                       => stmts.map(p(_)).mkString(";\n")
     }
   }
 }
