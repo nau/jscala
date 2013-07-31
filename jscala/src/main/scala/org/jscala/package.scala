@@ -11,13 +11,15 @@ package object jscala {
   import language.experimental.macros
   import scala.reflect.macros.Context
 
+  private lazy val engine = {
+    val factory = new ScriptEngineManager()
+    factory.getEngineByName("JavaScript")
+  }
+
   implicit class JsAstOps(ast: JsAst) {
+
     def asString = JavascriptPrinter.print(ast, 0)
-    def eval() = {
-      val factory = new ScriptEngineManager()
-      val engine = factory.getEngineByName("JavaScript")
-      engine.eval(asString)
-    }
+    def eval() = engine.eval(asString)
     def compress = {
       val compressor = new JavaScriptCompressor(new StringReader(asString), new ErrorReporter {
         def warning(p1: String, p2: String, p3: Int, p4: String, p5: Int) {
@@ -77,7 +79,6 @@ package object jscala {
       val params =  args.map(_.tree)
       c.Expr[Map[String, V]](treeBuild.mkMethodCall(reify(Map).tree, params))
     }
-
 
     private lazy val jsString: PFT[String] = {
       case Literal(Constant(value: Char))  => value.toString
