@@ -1,4 +1,6 @@
-package org.jscala
+package org.jscalaexample
+
+import org.jscala._
 
 object JScalaExample {
   def domManipulations() {

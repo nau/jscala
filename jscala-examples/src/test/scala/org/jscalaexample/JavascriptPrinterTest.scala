@@ -1,6 +1,7 @@
-package org.jscala
+package org.jscalaexample
 
 import org.scalatest.FunSuite
+import org.jscala._
 import org.jscala.{javascript=>js}
 
 class JavascriptPrinterTest extends FunSuite {
@@ -11,7 +12,7 @@ class JavascriptPrinterTest extends FunSuite {
     }
     assert(ast.asString === """{
                             |  var a = ["1", "2", "3"];
-                            |  for (i in a) console.log(i)
+                            |  for (i in a) console.log(i);
                             |}""".stripMargin)
   }
 
@@ -23,8 +24,8 @@ class JavascriptPrinterTest extends FunSuite {
       })()
     }
     assert(ast.asString === """(function () {
-                            |  console.log(1)
-                            |})()""".stripMargin)
+                            |    console.log(1);
+                            |  })()""".stripMargin)
   }
 
   test("YUI Compressor") {

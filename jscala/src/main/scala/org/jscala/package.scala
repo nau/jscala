@@ -5,6 +5,7 @@ import com.yahoo.platform.yui.compressor.JavaScriptCompressor
 import java.io.{StringWriter, StringReader}
 import org.mozilla.javascript.ErrorReporter
 import scala.reflect.internal.Flags
+import scala.collection.generic.{MapFactory, SeqFactory}
 
 package object jscala {
   import language.experimental.macros
@@ -119,6 +120,11 @@ package object jscala {
     }
 
     def convert(tree: Tree): c.Expr[JsAst] = {
+      lazy val seqFactorySym = c.typeOf[SeqFactory[Seq]].typeSymbol
+      lazy val mapFactorySym = c.typeOf[MapFactory[collection.Map]].typeSymbol
+      lazy val jarraySym = c.mirror.staticClass("org.jscala.JArray")
+      lazy val seqSym = c.mirror.staticClass("scala.collection.Seq")
+      lazy val mapSym = c.mirror.staticClass("scala.collection.Map")
 //      println((tree))
 //      println(showRaw(tree))
 
@@ -130,7 +136,11 @@ package object jscala {
         case Ident(name) => reify(JsIdent(c.literal(name.decoded).splice))
       }
 
-      lazy val jsSelect: ToExpr[JsSelect] = {
+      lazy val jsSelect: ToExpr[JsExpr] = {
+        case Select(Select(Select(Ident(Name("org")), Name("jscala")), Name("package")), Name(name)) =>
+          reify(JsIdent(c.literal(name).splice))
+        case Select(Select(Ident(Name("org")), Name("jscala")), Name(name)) =>
+          reify(JsIdent(c.literal(name).splice))
         case Select(q, name) =>
           reify(JsSelect(jsExpr(q).splice, c.literal(name.decoded).splice))
       }
@@ -165,14 +175,12 @@ package object jscala {
       }
 
       lazy val jsMapExpr: ToExpr[JsExpr] = {
-        case Apply(Select(Ident(ident), Name("apply")), List(index)) =>
-          reify(JsAccess(JsIdent(c.literal(ident.decoded).splice), jsExpr(index).splice))
-        case Apply(Select(Ident(ident), Name("update")), List(key, value)) =>
-          reify(JsBinOp("=", JsAccess(JsIdent(c.literal(ident.decoded).splice), jsExpr(key).splice), jsExpr(value).splice))
-        case Apply(TypeApply(path, _), args) if path.is("scala.Predef.Map.apply") =>
+        case Apply(TypeApply(Select(path, Name("apply")), _), args) if path.tpe.baseClasses.contains(mapFactorySym) =>
           genMap(args)
-        case Apply(TypeApply(path, _), args) if path.is("scala.collection.mutable.Map.apply") =>
-          genMap(args)
+        case Apply(Select(path, Name("apply")), List(index)) if path.tpe.baseClasses.contains(mapSym) =>
+          reify(JsAccess(jsExpr(path).splice, jsExpr(index).splice))
+        case Apply(Select(path, Name("update")), List(key, value)) if path.tpe.baseClasses.contains(mapSym) =>
+          reify(JsBinOp("=", JsAccess(jsExpr(path).splice, jsExpr(key).splice), jsExpr(value).splice))
       }
 
       lazy val jsForStmt: ToExpr[JsStmt] = {
@@ -186,8 +194,12 @@ package object jscala {
           reify(JsForIn(JsIdent(c.literal(coll.decoded).splice), JsIdent(c.literal(ident.decoded).splice), forBody.splice))
       }
 
+      def isArray(path: c.Tree) =
+        path.tpe.typeSymbol == definitions.ArrayClass || path.tpe.typeSymbol == jarraySym || path.tpe.baseClasses.contains(seqSym)
+
       lazy val jsArrayExpr: ToExpr[JsExpr] = {
-        case Apply(TypeApply(path, _), args) if path.is("JArray.apply") =>
+        // Array creation
+        case Apply(TypeApply(path, _), args) if path.is("org.jscala.JArray.apply") =>
           val params = listToExpr(args map jsExpr)
           reify(JsArray(params.splice))
         case TypeApply(path, args) if path.is("scala.Array.apply") =>
@@ -202,25 +214,31 @@ package object jscala {
         case Apply(path, args) if path.is("scala.Array.apply") =>
           val params = listToExpr(args map jsExpr)
           reify(JsArray(params.splice))
-        case Apply(Select(path, Name("apply")), List(idx)) if path.symbol.typeSignature.typeConstructor.toString == "Array" =>
-          println("Apply " + path.symbol.typeSignature.typeConstructor + " -> " + idx.tpe)
+        case Apply(TypeApply(Select(path, Name("apply")), _), args) if path.tpe.baseClasses.contains(seqFactorySym) =>
+          val params = listToExpr(args map jsExpr)
+          reify(JsArray(params.splice))
+        // Array access
+        case Apply(Select(path, Name("apply")), List(idx)) if isArray(path) =>
           reify(JsAccess(jsExpr(path).splice, jsExpr(idx).splice))
+        // Array update
+        case Apply(Select(path, Name("update")), List(key, value)) if isArray(path) =>
+          reify(JsBinOp("=", JsAccess(jsExpr(path).splice, jsExpr(key).splice), jsExpr(value).splice))
       }
 
       lazy val jsGlobalFuncsExpr: ToExpr[JsExpr] = {
         case TypeApply(Select(expr, Name("asInstanceOf")), _) => jsExpr(expr)
-        case Apply(path, List(Literal(Constant(js: String)))) if path.is("jscala.package.include") =>
+        case Apply(path, List(Literal(Constant(js: String)))) if path.is("org.jscala.package.include") =>
           reify(JsRaw(c.literal(js).splice))
-        case app@Apply(Apply(TypeApply(path, _), List(ident)), List(jss)) if path.is("jscala.package.inject") =>
+        case app@Apply(Apply(TypeApply(path, _), List(ident)), List(jss)) if path.is("org.jscala.package.inject") =>
           val call = c.Expr[JsExpr](Apply(jss, List(ident)))
           reify(JsLazy(() => call.splice))
-        case Apply(Select(path, fn), args) if path.is("jscala.package") =>
+        case Apply(Select(path, fn), args) if path.is("org.jscala.package") =>
           val params = listToExpr(args map jsExpr)
           reify(JsCall(JsIdent(c.literal(fn.decoded).splice), params.splice))
       }
 
       lazy val jsJStringExpr: ToExpr[JsExpr] = {
-        case Apply(Select(New(Ident(Name("JString"))), _), List(Literal(Constant(str: String)))) =>
+        case Apply(Select(New(Select(Select(Ident(Name("org")), Name("jscala")), Name("JString"))), _), List(Literal(Constant(str: String)))) =>
           reify(JsString(c.literal(str).splice))
       }
 
@@ -228,6 +246,9 @@ package object jscala {
         case Apply(Select(New(Ident(ident)), _), args) =>
           val params = listToExpr(args map jsExpr)
           reify(JsNew(JsCall(JsIdent(c.literal(ident.decoded).splice), params.splice)))
+        case Apply(Select(New(path), _), args) =>
+          val params = listToExpr(args map jsExpr)
+          reify(JsNew(JsCall(jsExpr(path).splice, params.splice)))
       }
 
       lazy val jsCallExpr: ToExpr[JsExpr] = {
@@ -327,8 +348,6 @@ package object jscala {
 
       lazy val jsClassDecl: ToExpr[JsObjDecl] = {
         case cd@ClassDef(_, clsName, _, Template(_, _, body)) =>
-          println("ClassDecl " + cd)
-          println("ClassDecl " + showRaw(cd))
           val ctor = body.collect {
             case f@DefDef(mods, n, _, argss, _, Block(stats, _)) if n == nme.CONSTRUCTOR =>
               val a = argss.headOption.map(vp => vp.map(v => v.name.decoded)).getOrElse(Nil)
@@ -345,7 +364,6 @@ package object jscala {
 
       lazy val jsAnonObjDecl: ToExpr[JsAnonObjDecl] = {
         case Block(List(ClassDef(_, clsName, _, Template(_, _, body))), _/* Constructor call */) =>
-          println("jsAnonObjDecl")
           val defs = body.collect(objectFields).toMap
           val m = mapToExpr(defs)
           reify(JsAnonObjDecl(m.splice))

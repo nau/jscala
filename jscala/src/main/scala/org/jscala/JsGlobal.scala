@@ -19,8 +19,9 @@ class JString(s: String) {
 }
 
 case class JArray[A](args: A*) {
-  var constructor = () => this
   val length = 0
+  def apply(idx: Int): A = null.asInstanceOf[A]
+  def update(idx: Int, value: A) {}
   def concat(arrays: JArray[A]*): JArray[A] = this
   def indexOf(item: A): Int = 0
   def lastIndexOf(item: A): Int = 0

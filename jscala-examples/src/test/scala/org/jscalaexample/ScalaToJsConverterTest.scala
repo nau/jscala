@@ -1,7 +1,9 @@
-package org.jscala
+package org.jscalaexample
 
 import org.scalatest.FunSuite
+import org.jscala._
 import org.jscala.{javascript=>js}
+import scala.collection.mutable.ArrayBuffer
 
 class ScalaToJsConverterTest extends FunSuite {
   test("Literals") {
@@ -157,15 +159,23 @@ class ScalaToJsConverterTest extends FunSuite {
       val a = Array("1", "2")
       for (i <- a) console.log(i)
     } === JsBlock(List(JsVarDef("a", JsArray(List(JsString("1"), JsString("2")))), JsForIn(JsIdent("a"), JsIdent("i"), JsExprStmt(call)))))
-    val call1 = JsCall(JsSelect(JsIdent("console"), "log"), List(JsCall(JsSelect(JsIdent("a"), "pop"), Nil)))
+    val call1 = JsCall(JsSelect(JsIdent("a"), "pop"), Nil)
     assert(js {
       val a = JArray("1", "2")
-      console.log(a.pop())
+      a.pop()
     } === JsBlock(List(JsVarDef("a", JsArray(List(JsString("1"), JsString("2")))), JsExprStmt(call1))))
+    val assign = JsExprStmt(JsBinOp("=",JsAccess(JsIdent("a"),JsNum(0.0,false)),JsAccess(JsIdent("a"),JsNum(1.0,false))))
     assert(js {
       val a = JArray(1, 2)
-      console.log(a.pop())
-    } === JsBlock(List(JsVarDef("a", JsArray(List(JsNum(1.0,false), JsNum(2.0,false)))), JsExprStmt(call1))))
+      a(0) = a(1)
+      a.pop()
+    } === JsBlock(List(JsVarDef("a", JsArray(List(JsNum(1.0,false), JsNum(2.0,false)))), assign, JsExprStmt(call1))))
+    val ast = js {
+      val a = Seq("1", "2")
+      val b = ArrayBuffer(1, 2)
+      parseInt(a(0)) + b(1)
+    }
+    assert(ast.eval() === 3)
   }
 
   test("Math") {
@@ -261,15 +271,14 @@ class ScalaToJsConverterTest extends FunSuite {
       class A(val arg1: String, var arg2: Int, arg3: Array[String]) {
         val field = 1
         def func1(i: Int) = field
-        def func2(i: Int) = arg3(0)
+        def func2(i: Int) = arg3(i)
         def func3() = arg3
-        def func4 = func3()(0)
+        def func4() = func3()(0)
       }
-      val a = new A("a", 1, Array(""))
-      a.arg1 + a.func2(a.arg2)
+      val a = new A("a", 1, Array("111", "222"))
+      a.arg1 + a.func2(a.arg2) + a.field + a.func4()
     }
-    println(ast.asString)
-    println(ast.eval())
+    assert(ast.eval() === "a2221111")
   }
 
   test("Lazy") {
