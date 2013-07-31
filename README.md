@@ -8,14 +8,18 @@ Supported Features:
 ===================
 * Variable definitions, basic unary and binary operations
 * Named and anonymous functions
-* Scala Arrays as Javascript Array literals
-* Scala mutable/immutable Map as Javascript object
+* Scala Arrays/Seq as Javascript Array literals
+* Scala Map as Javascript object
 * Scala anonymous classes as Javascript objects
 * if, while, for..in and for statements
+* Scala if as an expression (e.g. val a = if (true) 1 else 2)
+* Scala match as Javascript switch
+* Basic Scala class definition to Javascript object definition translation
 * Global Javascript functions (parseInt etc)
 * Basic Browser objects (window, history, location etc)
 * Basic HTML DOM objects (Document, Element, Attribute, Node, NodeList etc)
 * Raw Javascript inclusion
+* Values and function call injections from your Scala code
 * Generated Javascript eval using Java ScriptEngine
 * Pretty printing and compression using YUI compressor
 
