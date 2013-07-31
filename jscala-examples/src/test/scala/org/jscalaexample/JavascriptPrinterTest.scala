@@ -19,13 +19,14 @@ class JavascriptPrinterTest extends FunSuite {
   test("IIFE") {
     val ast = js {
       (() => {
-        console.log(1)
-        ()
+        val a = 1
+        console.log(a)
       })()
     }
     assert(ast.asString === """(function () {
-                            |    console.log(1);
-                            |  })()""".stripMargin)
+                              |    var a = 1;
+                              |    console.log(a);
+                              |  })()""".stripMargin)
   }
 
   test("YUI Compressor") {

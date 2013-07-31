@@ -31,6 +31,7 @@ object JavascriptPrinter {
       case JsBinOp(operator, lhs, rhs)          => s"${p(lhs)} $operator ${p(rhs)}"
       case JsNew(call)                          => s"""new ${p(call)}"""
       case JsCall(callee, params)               => s"""${p(callee)}(${params.map(p(_)).mkString(", ")})"""
+      case JsBlock(Nil)                         => "{}"
       case JsBlock(stmts)                       => !< + stmts.map(p2(_) + ";\n").mkString + ind() + "}"
       case JsExprStmt(jsExpr)                   => p(jsExpr)
       case JsIf(cond, thenp, elsep)             => s"if (${p(cond)}) ${p(thenp)}" + elsep.map(e => s" else ${p(e)}").getOrElse("")

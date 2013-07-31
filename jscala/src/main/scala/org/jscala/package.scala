@@ -307,11 +307,15 @@ package object jscala {
         case lit@Literal(_) =>
           val body = if (isUnit(lit)) Nil else List(jsReturnStmt(lit))
           reify(JsBlock(listToExpr(body).splice))
-        case Block(stmts, expr) =>
-          val lastExpr = if (isUnit(expr)) Nil else List(jsReturn(expr))
+        case b@Block(stmts, expr) =>
+          val lastExpr = if (isUnit(expr)) Nil
+          else if (expr.tpe =:= typeOf[Unit]) List(jsStmt(expr))
+          else List(jsReturn(expr))
           val ss = listToExpr(stmts.map(jsStmt) ::: lastExpr)
           reify(JsBlock(ss.splice))
-        case rhs => reify(JsBlock(List(jsReturn(rhs).splice)))
+        case rhs =>
+          if (rhs.tpe =:= typeOf[Unit]) reify(JsBlock(List(jsStmt(rhs).splice)))
+          else reify(JsBlock(List(jsReturn(rhs).splice)))
       }
 
       lazy val jsFunDecl: ToExpr[JsFunDecl] = {
