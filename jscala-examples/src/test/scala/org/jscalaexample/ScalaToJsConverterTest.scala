@@ -92,6 +92,15 @@ class ScalaToJsConverterTest extends FunSuite {
       a + b
     }
     assert(ifExprAst.eval() === 10)
+    val matchExprAst = js {
+      val a = inject(local) match {
+        case 1 | 2 => "one or two"
+        case 3 => "three"
+        case _ => "other"
+      }
+      a
+    }
+    assert(matchExprAst.eval() === "one or two")
   }
 
   test("Simple statements") {
