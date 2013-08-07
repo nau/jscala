@@ -13,7 +13,7 @@ class NodeMap {
   def setNamedItem(item: Node) {}
 }
 
-trait Node {
+trait Node extends JsDynamic {
   def baseURI = ""
   def childNodes: NodeList[Node] = null
   def firstChild: Node = null
@@ -150,7 +150,7 @@ class Element extends Node with DocElemCommon {
   def setAttributeNode(attr: Attribute) {}
 
   //	Sets or returns the style attribute of an element
-  var style: Attribute = null
+  var style: JsDynamic = null
 
   //	Sets or returns the tab order of an element
   def tabIndex = 1

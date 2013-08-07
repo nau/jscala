@@ -301,7 +301,6 @@ class ScalaToJsConverterTest extends FunSuite {
       val a = new A("a", 1, Array("111", "222"))
       a.arg1 + a.func2(a.arg2) + a.field + a.func4()
     }
-//    println(ast.asString)
     assert(ast.eval() === "a2221111")
   }
 
@@ -338,7 +337,7 @@ class ScalaToJsConverterTest extends FunSuite {
   }
 
   test("JsDynamic") {
-    val $ = new JsDynamic
+    val $ = new JsDynamic {}
     class XmlHttpRequest(s: String) extends JsDynamic
     val ast = javascript {
       val a = new XmlHttpRequest("request")

@@ -31,6 +31,7 @@ case class JsString(value: String) extends JsLit
 case class JsNum(value: Double, isFloat: Boolean) extends JsLit
 case class JsArray(values: List[JsExpr]) extends JsLit
 case object JsUnit extends JsLit
+case object JsNull extends JsLit
 
 case class JsLazy(ast: () => JsAst) extends JsExpr
 case class JsIdent(ident: String) extends JsExpr
@@ -54,7 +55,7 @@ case class JsWhile(cond: JsExpr, body: JsStmt) extends JsStmt
 case class JsFor(index: JsIdent, from: JsNum, until: JsExpr, body: JsStmt) extends JsStmt
 case class JsForIn(coll: JsExpr, ident: JsIdent, body: JsStmt) extends JsStmt
 sealed trait JsSwitchable extends JsStmt
-case class JsCase(const: JsLit, body: JsStmt) extends JsSwitchable
+case class JsCase(const: JsExpr, body: JsStmt) extends JsSwitchable
 case class JsDefault(body: JsStmt) extends JsSwitchable
 case class JsSwitch(expr: JsExpr, cases: List[JsCase], default: Option[JsDefault]) extends JsStmt
 case class JsVarDef(ident: String, initializer: JsExpr) extends JsStmt

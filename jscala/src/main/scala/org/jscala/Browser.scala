@@ -48,7 +48,7 @@ object screen {
   val width = 0
 }
 
-object window {
+object window extends JsDynamic {
   // 	Returns a Boolean value indicating whether a window has been closed or not
   val closed = false
   // Sets or returns the default text in the statusbar of a window

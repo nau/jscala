@@ -39,6 +39,7 @@ class ScalaToJsConverter[C <: Context](val c: C) {
     }
   }
   private def isUnit(tree: Tree) = tree.equalsStructure(c.literalUnit.tree)
+  private def isNull(tree: Tree) = tree.equalsStructure(c.literalNull.tree)
   private def isArray(path: c.Tree) =
     path.tpe.typeSymbol == definitions.ArrayClass || path.tpe.typeSymbol == jarraySym || path.tpe.baseClasses.contains(seqSym)
   private def listToExpr[T](exprs: List[Expr[T]]): Expr[List[T]] = c.Expr[List[T]](treeBuild.mkMethodCall(reify(List).tree, exprs.map(_.tree)))
@@ -68,9 +69,13 @@ class ScalaToJsConverter[C <: Context](val c: C) {
     def apply(v1: Tree) = reify(JsUnit)
     def isDefinedAt(x: Tree) = isUnit(x)
   }
+  private object jsNullLit extends PartialFunction[Tree, Expr[JsNull.type]] {
+    def apply(v1: Tree) = reify(JsNull)
+    def isDefinedAt(x: Tree) = isNull(x)
+  }
 
   private val jsLit: ToExpr[JsLit] = {
-    jsStringLit orElse jsNumLit orElse jsBoolLit orElse jsUnitLit
+    jsStringLit orElse jsNumLit orElse jsBoolLit orElse jsNullLit orElse jsUnitLit
   }
 
   def convert(tree: Tree): c.Expr[JsAst] = {
@@ -174,6 +179,7 @@ class ScalaToJsConverter[C <: Context](val c: C) {
     lazy val jsGlobalFuncsExpr: ToExpr[JsExpr] = {
       case TypeApply(Select(Apply(jsAnyOps, List(expr)), Name("as")), _) if jsAnyOps.is("org.jscala.package.JsAnyOps") =>
         jsExpr(expr)
+      case Select(expr, Name("toDouble")) => jsExpr(expr)
       case TypeApply(Select(expr, Name("asInstanceOf")), _) =>
         jsExpr(expr)
       case Apply(TypeApply(Select(path, Name(n)), _), List(expr)) if path.is("org.jscala.package") && n.startsWith("implicit") =>
@@ -225,6 +231,7 @@ class ScalaToJsConverter[C <: Context](val c: C) {
         val callee = jsExpr apply fun
         val filteredDefaults = args collect {
           case arg@Select(_, n) if n.decoded.contains("$default$") => None
+          case arg@Ident(n) if n.decoded.contains("$default$") => None
           case arg => Some(jsExpr(arg))
         }
         val params = listToExpr(filteredDefaults.flatten)
@@ -298,6 +305,10 @@ class ScalaToJsConverter[C <: Context](val c: C) {
     }
 
     lazy val jsAnonFunDecl: ToExpr[JsAnonFunDecl] = {
+      case Block(Nil, Function(vparams, rhs)) =>
+        val params = listToExpr(vparams.map(v => c.literal(v.name.decoded)))
+        val body = jsFunBody(rhs)
+        reify(JsAnonFunDecl(params.splice, body.splice))
       case Function(vparams, rhs) =>
         val params = listToExpr(vparams.map(v => c.literal(v.name.decoded)))
         val body = jsFunBody(rhs)
@@ -316,10 +327,10 @@ class ScalaToJsConverter[C <: Context](val c: C) {
         reify(JsTry(jsStmt(body).splice, ctch.splice, fin.splice))
     }
 
-
     def jsSwitchGen(expr: Tree, cases: List[CaseDef], f: Tree => Tree) = {
       val cs = cases collect {
         case CaseDef(const@Literal(Constant(_)), EmptyTree, body) => List(reify(JsCase(jsLit(const).splice, jsStmt(f(body)).splice)))
+        case CaseDef(sel@Select(path, n), EmptyTree, body) => List(reify(JsCase(jsExpr(sel).splice, jsStmt(f(body)).splice)))
         case CaseDef(Alternative(xs), EmptyTree, body) =>
           val stmt = jsStmt(f(body))
           for (const <- xs) yield reify(JsCase(jsLit(const).splice, stmt.splice))

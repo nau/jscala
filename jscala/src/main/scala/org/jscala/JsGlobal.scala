@@ -225,7 +225,7 @@ object console {
   }
 }
 
-class JsDynamic extends Dynamic {
+trait JsDynamic extends Dynamic {
   def apply(a: Any*) = this
   def applyDynamic(name: String)(args: Any*) = this
   def selectDynamic(name: String) = this

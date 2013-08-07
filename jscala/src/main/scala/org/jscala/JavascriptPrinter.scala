@@ -17,6 +17,7 @@ object JavascriptPrinter {
     def !> = "\n" + ind() + "}"
     ast match {
       case JsLazy(f)                            => p(f())
+      case JsNull                               => "null"
       case JsBool(value)                        => value.toString
       case JsString(value)                      => "\"" + value + "\""
       case JsNum(value, true)                   => value.toString
