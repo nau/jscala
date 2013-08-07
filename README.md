@@ -126,3 +126,5 @@ Feedback
 Any feedback is very welcome!
 
 You can use [JScala mailing list](https://groups.google.com/forum/#!forum/jscala-user) if you have any questions.
+
+Or simply ask me on Twitter: [@atlanter](https://twitter.com/atlanter)
