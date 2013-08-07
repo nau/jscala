@@ -19,6 +19,8 @@ object BuildSettings {
       "-deprecation",
       "-feature",
       "-unchecked",
+//      "-Ystatistics",
+//      "-verbose",
       "-language:_"
 	)
   )

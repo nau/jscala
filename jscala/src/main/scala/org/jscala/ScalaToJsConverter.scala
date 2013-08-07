@@ -22,6 +22,7 @@ class ScalaToJsConverter[C <: Context](val c: C) {
   private lazy val jarraySym = c.mirror.staticClass("org.jscala.JArray")
   private lazy val seqSym = c.mirror.staticClass("scala.collection.Seq")
   private lazy val mapSym = c.mirror.staticClass("scala.collection.Map")
+  private lazy val jsAstSym = c.typeOf[JsAst].typeSymbol
 
   implicit class TreeHelper(tree: Tree) {
     def is(p: String) = tree.equalsStructure(select(p)) || tree.equalsStructure(select(p, s => This(newTypeName(s))))
@@ -74,7 +75,7 @@ class ScalaToJsConverter[C <: Context](val c: C) {
 
   def convert(tree: Tree): c.Expr[JsAst] = {
     //      println((tree))
-    //      println(showRaw(tree))
+//          println(showRaw(tree))
 
     lazy val jsThis: ToExpr[JsIdent] = {
       case This(name) => reify(JsIdent("this"))
@@ -116,7 +117,6 @@ class ScalaToJsConverter[C <: Context](val c: C) {
     def genMap(args: List[Tree]) = {
       val map = for (arg <- args) yield {
         val (lhs, rhs) = jsTupleExpr(arg)
-        //          println("AAA" + showRaw(lhs))
         jsString.applyOrElse(lhs, (t: Tree) => c.abort(arg.pos, "Map key type can only be String")) -> jsExpr(rhs)
       }
       val params = mapToExpr(map.toMap)
@@ -172,9 +172,18 @@ class ScalaToJsConverter[C <: Context](val c: C) {
     }
 
     lazy val jsGlobalFuncsExpr: ToExpr[JsExpr] = {
-      case TypeApply(Select(expr, Name("asInstanceOf")), _) => jsExpr(expr)
+      case TypeApply(Select(Apply(jsAnyOps, List(expr)), Name("as")), _) if jsAnyOps.is("org.jscala.package.JsAnyOps") =>
+        jsExpr(expr)
+      case TypeApply(Select(expr, Name("asInstanceOf")), _) =>
+        jsExpr(expr)
+      case Apply(TypeApply(Select(path, Name(n)), _), List(expr)) if path.is("org.jscala.package") && n.startsWith("implicit") =>
+        jsExpr(expr)
+      case Apply(Select(path, Name(n)), List(expr)) if path.is("org.jscala.package") && n.startsWith("implicit") =>
+        jsExpr(expr)
       case Apply(path, List(Literal(Constant(js: String)))) if path.is("org.jscala.package.include") =>
         reify(JsRaw(c.literal(js).splice))
+      case app@Apply(Select(path, _), List(ident)) if path.is("org.jscala.package.inject") =>
+        reify(JsLazy(() => jsAst(ident).splice))
       case app@Apply(Apply(TypeApply(path, _), List(ident)), List(jss)) if path.is("org.jscala.package.inject") =>
         val call = c.Expr[JsExpr](Apply(jss, List(ident)))
         reify(JsLazy(() => call.splice))
@@ -200,6 +209,18 @@ class ScalaToJsConverter[C <: Context](val c: C) {
     lazy val jsCallExpr: ToExpr[JsExpr] = {
       case Apply(Select(lhs, name), List(rhs)) if name.decoded.endsWith("_=") =>
         reify(JsBinOp("=", JsSelect(jsExpr(lhs).splice, c.literal(name.decoded.dropRight(2)).splice), jsExpr(rhs).splice))
+      case Apply(Apply(Select(sel, Name("applyDynamic")), List(Literal(Constant(name: String)))), args) =>
+        val callee = reify(JsSelect(jsExpr(sel).splice, c.literal(name).splice))
+        val params = listToExpr(args.map(jsExpr))
+        reify(JsCall(callee.splice, params.splice))
+      case Apply(Apply(Select(sel, Name("updateDynamic")), List(Literal(Constant(name: String)))), List(arg)) =>
+        val callee = reify(JsSelect(jsExpr(sel).splice, c.literal(name).splice))
+        reify(JsBinOp("=", callee.splice, jsExpr(arg).splice))
+      case Apply(Select(sel, Name("selectDynamic")), List(Literal(Constant(name: String)))) =>
+        reify(JsSelect(jsExpr(sel).splice, c.literal(name).splice))
+      case app@Apply(fun, args) if app.tpe <:< typeOf[JsAst] =>
+        val expr = c.Expr[JsAst](app)
+        reify(JsLazy(() => expr.splice))
       case Apply(fun, args) =>
         val callee = jsExpr apply fun
         val filteredDefaults = args collect {
@@ -375,7 +396,6 @@ class ScalaToJsConverter[C <: Context](val c: C) {
     lazy val jsExprStmt: ToExpr[JsExprStmt] = jsExpr andThen (jsExpr => reify(JsExprStmt(jsExpr.splice)))
 
     lazy val jsStmt: ToExpr[JsStmt] = Seq(
-      jsUnitLit,
       jsBlock,
       jsVarDefStmt,
       jsIfStmt,
@@ -389,6 +409,8 @@ class ScalaToJsConverter[C <: Context](val c: C) {
       jsExprStmt
     ) reduceLeft (_ orElse _)
 
-    jsExpr orElse jsStmt apply tree
+    lazy val jsAst: ToExpr[JsAst] = jsExpr orElse jsStmt
+
+    jsAst apply tree
   }
 }

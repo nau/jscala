@@ -292,6 +292,7 @@ class ScalaToJsConverterTest extends FunSuite {
     val ast = javascript {
       class A(val arg1: String, var arg2: Int, arg3: Array[String]) {
         val field = 1
+        private var count = arg2
         def func1(i: Int) = field
         def func2(i: Int) = arg3(i)
         def func3() = arg3
@@ -300,6 +301,7 @@ class ScalaToJsConverterTest extends FunSuite {
       val a = new A("a", 1, Array("111", "222"))
       a.arg1 + a.func2(a.arg2) + a.field + a.func4()
     }
+//    println(ast.asString)
     assert(ast.eval() === "a2221111")
   }
 
@@ -311,14 +313,45 @@ class ScalaToJsConverterTest extends FunSuite {
     implicit def zzz: JsSerializer[My] = new JsSerializer[My] { def apply(a: My) = JsString(a.a) }
     val z = My("my")
     val ls = Seq(1, 2, 3).map(_.toJs)
+    def genJsAst() = JsString("gen")
     val ast = javascript {
       val a = inject(x)
       val b = inject(y)
       val c = inject(z)
       val d = inject(f _)
       val e = inject(ls)
-      a.asInstanceOf[String] + b + c + d + e.toString()
+      val gen = genJsAst()
+      a.as[String] + b + c + d + e.toString() + gen
     }
-    assert(ast.eval() === "15hehemy11,2,3")
+    assert(ast.eval() === "15hehemy11,2,3gen")
+  }
+
+  test("Implicit conversions") {
+    val ast = javascript {
+      val a: JString = "asdf"
+      val b: JArray[Int] = Array(1, 2)
+      val c: JArray[String] = ArrayBuffer("1", "2")
+      def f(s: String, b: Array[Int], c: Array[String]) = s
+      f(a, b, c)
+    }
+    assert(ast.eval() === "asdf")
+  }
+
+  test("JsDynamic") {
+    val $ = new JsDynamic
+    class XmlHttpRequest(s: String) extends JsDynamic
+    val ast = javascript {
+      val a = new XmlHttpRequest("request")
+      a.foo("reply")
+      $("button", this).click(() => $("p").css("color", "red"))
+      $.field = $.select
+    }
+    val request = JsVarDef("a",JsNew(JsCall(JsIdent("XmlHttpRequest"),List(JsString("request")))))
+    val foo = JsExprStmt(JsCall(JsSelect(JsIdent("a"),"foo"),List(JsString("reply"))))
+    val returnExpr = JsCall(JsSelect(JsCall(JsSelect(JsIdent("$"), "apply"), List(JsString("p"))), "css"), List(JsString("color"), JsString("red")))
+    val anonFunDecl = JsAnonFunDecl(List(), JsBlock(List(JsReturn(returnExpr))))
+    val call = JsCall(JsSelect(JsCall(JsSelect(JsIdent("$"), "apply"), List(JsString("button"), JsIdent("this"))), "click"), List(anonFunDecl))
+    val update = JsBinOp("=", JsSelect(JsIdent("$"), "field"), JsSelect(JsIdent("$"), "select"))
+    assert(ast === JsBlock(List(request, foo, JsExprStmt(call), JsExprStmt(update))))
   }
 }

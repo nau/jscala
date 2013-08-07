@@ -1,5 +1,6 @@
 package org.jscala
 
+import language.dynamics
 import scala.util.matching.Regex
 import java.lang
 
@@ -222,4 +223,11 @@ object console {
   def log(s: Any) {
     println(s)
   }
+}
+
+class JsDynamic extends Dynamic {
+  def apply(a: Any*) = this
+  def applyDynamic(name: String)(args: Any*) = this
+  def selectDynamic(name: String) = this
+  def updateDynamic(name: String)(arg: Any) = this
 }

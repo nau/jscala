@@ -1,20 +1,38 @@
 package org.jscala
 
-import scala.util.matching.Regex
 
 sealed trait JsAst
 
-sealed trait JsStmt extends JsAst
-sealed trait JsExpr extends JsAst
+sealed trait JsStmt extends JsAst {
+  def block = JsBlock(List(this))
+  def join(a: JsAst) = (this, a) match {
+    case (JsBlock(lhs), JsBlock(rhs)) => JsBlock(lhs ::: rhs)
+    case (JsStmts(lhs), JsBlock(rhs)) => JsBlock(lhs ::: rhs)
+    case (JsBlock(lhs), JsStmts(rhs)) => JsBlock(lhs ::: rhs)
+    case (JsStmts(lhs), JsStmts(rhs)) => JsStmts(lhs ::: rhs)
+    case (JsBlock(lhs), s: JsStmt) => JsBlock(lhs :+ s)
+    case (JsBlock(lhs), s: JsExpr) => JsBlock(lhs :+ s.stmt)
+    case (s: JsStmt, JsBlock(rhs)) => JsBlock(s :: rhs)
+    case (JsStmts(lhs), s: JsStmt) => JsStmts(lhs :+ s)
+    case (JsStmts(lhs), s: JsExpr) => JsStmts(lhs :+ s.stmt)
+    case (s: JsStmt, JsStmts(rhs)) => JsStmts(s :: rhs)
+    case (lhs: JsStmt, rhs: JsStmt) => JsBlock(List(lhs, rhs))
+    case (lhs: JsStmt, rhs: JsExpr) => JsBlock(List(lhs, rhs.stmt))
+  }
+}
+sealed trait JsExpr extends JsAst {
+  def stmt = JsExprStmt(this)
+  def block = JsBlock(List(this.stmt))
+}
 sealed trait JsLit extends JsExpr
 
 case class JsBool(value: Boolean) extends JsLit
 case class JsString(value: String) extends JsLit
 case class JsNum(value: Double, isFloat: Boolean) extends JsLit
 case class JsArray(values: List[JsExpr]) extends JsLit
-case object JsUnit extends JsLit with JsStmt
+case object JsUnit extends JsLit
 
-case class JsLazy(ast: () => JsExpr) extends JsExpr
+case class JsLazy(ast: () => JsAst) extends JsExpr
 case class JsIdent(ident: String) extends JsExpr
 case class JsRaw(js: String) extends JsExpr
 case class JsAccess(qualifier: JsExpr, key: JsExpr) extends JsExpr

@@ -42,6 +42,17 @@ package object jscala {
     }
   }
 
+  implicit class JsAnyOps(a: Any) {
+    def as[A] = a.asInstanceOf[A]
+  }
+
+  implicit def implicitString2JString(s: String): JString = new JString(s)
+  implicit def implicitJString2String(s: JString): String = ""
+  implicit def implicitArray2JArray[A](s: Array[A]): JArray[A] = ???
+  implicit def implicitJArray2Array[A](s: JArray[A]): Array[A] = ???
+  implicit def implicitSeq2JArray[A](s: Seq[A]): JArray[A] = ???
+  implicit def implicitJArray2Seq[A](s: JArray[A]): Seq[A] = ???
+
   trait JsSerializer[A] {
     def apply(a: A): JsExpr
   }
@@ -79,10 +90,16 @@ package object jscala {
   def typeof(x: Any) = ""
   def include(js: String) = ""
 
+  def inject(a: JsAst) = ???
   /**
    * Injects a value into generated Javascript using Jsserializer
    */
   def inject[A](a: A)(implicit jss: JsSerializer[A]) = a
+
+  /**
+   * Macro that generates Javascript AST representation of its argument
+   */
+  def ajax[A, B](input: A)(server: A => B)(callback: B => Unit): JsAst = ???
 
   /**
    * Macro that generates Javascript AST representation of its argument
