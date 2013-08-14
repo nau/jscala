@@ -23,7 +23,7 @@ object BuildSettings {
 //      "-Ystatistics",
 //      "-verbose",
       "-language:_"
-	)
+	  )
   )
 
   def extraPom =
@@ -61,7 +61,7 @@ object JScalaBuild extends Build {
   lazy val root: Project = Project(
     "jscala",
     file("."),
-    settings = buildSettings /*++ Seq(tetrisTask)*/
+    settings = buildSettings
   ) aggregate(jscala, examples)
   
 
@@ -70,7 +70,7 @@ object JScalaBuild extends Build {
     "jscala-macros",
     file("jscala"),
     settings = buildSettings ++ Seq(
-      libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
+      libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _ % "provided"),
       libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
     )
   )
