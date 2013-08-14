@@ -22,7 +22,6 @@ class ScalaToJsConverter[C <: Context](val c: C) {
   private lazy val jarraySym = c.mirror.staticClass("org.jscala.JArray")
   private lazy val seqSym = c.mirror.staticClass("scala.collection.Seq")
   private lazy val mapSym = c.mirror.staticClass("scala.collection.Map")
-  private lazy val jsAstSym = c.typeOf[JsAst].typeSymbol
 
   implicit class TreeHelper(tree: Tree) {
     def is(p: String) = tree.equalsStructure(select(p)) || tree.equalsStructure(select(p, s => This(newTypeName(s))))
@@ -120,11 +119,11 @@ class ScalaToJsConverter[C <: Context](val c: C) {
     }
 
     def genMap(args: List[Tree]) = {
-      val map = for (arg <- args) yield {
+      val fields = for (arg <- args) yield {
         val (lhs, rhs) = jsTupleExpr(arg)
         jsString.applyOrElse(lhs, (t: Tree) => c.abort(arg.pos, "Map key type can only be String")) -> jsExpr(rhs)
       }
-      val params = mapToExpr(map.toMap)
+      val params = listToExpr(fields.map { case (n, v) => reify((c.literal(n).splice, v.splice)) })
       reify(JsAnonObjDecl(params.splice))
     }
 
@@ -369,9 +368,9 @@ class ScalaToJsConverter[C <: Context](val c: C) {
 
     lazy val jsAnonObjDecl: ToExpr[JsAnonObjDecl] = {
       case Block(List(ClassDef(_, clsName, _, Template(_, _, body))), _/* Constructor call */) =>
-        val defs = body.collect(objectFields).toMap
-        val m = mapToExpr(defs)
-        reify(JsAnonObjDecl(m.splice))
+        val defs = body.collect(objectFields)
+        val params = listToExpr(defs.map { case (n, v) => reify((c.literal(n).splice, v.splice)) })
+        reify(JsAnonObjDecl(params.splice))
     }
 
     lazy val jsReturn1: ToExpr[JsStmt] = {

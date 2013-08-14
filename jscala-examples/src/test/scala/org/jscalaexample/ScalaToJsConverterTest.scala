@@ -74,8 +74,8 @@ class ScalaToJsConverterTest extends FunSuite {
         def func2(i: Int) = "string"
       }
     }
-    val map = Map("field" -> JsNum(1.0, false), "func1" -> JsAnonFunDecl(List("i"), JsBlock(List(JsReturn(JsSelect(JsIdent("this"), "field"))))), "func2" -> JsAnonFunDecl(List("i"), JsBlock(List(JsReturn(JsString("string"))))))
-    assert(ast === JsBlock(List(JsVarDef("obj", JsAnonObjDecl(map)))))
+    val fields = List("field" -> JsNum(1.0, false), "func1" -> JsAnonFunDecl(List("i"), JsBlock(List(JsReturn(JsSelect(JsIdent("this"), "field"))))), "func2" -> JsAnonFunDecl(List("i"), JsBlock(List(JsReturn(JsString("string"))))))
+    assert(ast === JsBlock(List(JsVarDef("obj", JsAnonObjDecl(fields)))))
     assert(js(obj.func2(1)) === JsCall(JsSelect(JsIdent("obj"), "func2"), List(JsNum(1, false))))
     val lambda = JsAnonFunDecl(List("i"), JsBlock(List(JsReturn(JsCall(JsSelect(JsIdent("i"), "toString"), Nil)))))
     assert(js(func3(i => i.toString)) === JsCall(JsIdent("func3"), List(lambda)))
@@ -246,8 +246,8 @@ class ScalaToJsConverterTest extends FunSuite {
       a("field").pop().toString()
     }
     val call1 = JsCall(JsSelect(JsCall(JsSelect(JsAccess(JsIdent("a"), JsString("field")), "pop"), Nil), "toString"), Nil)
-    val map = Map("field" -> JsArray(List(JsNum(1.0, false), JsNum(2.0, false))), "field2" -> JsArray(List(JsNum(1.0, false))), "field3" -> JsArray(Nil))
-    assert(ast === JsBlock(List(JsVarDef("a", JsAnonObjDecl(map)), JsExprStmt(call1))))
+    val fields = List("field" -> JsArray(List(JsNum(1.0, false), JsNum(2.0, false))), "field2" -> JsArray(List(JsNum(1.0, false))), "field3" -> JsArray(Nil))
+    assert(ast === JsBlock(List(JsVarDef("a", JsAnonObjDecl(fields)), JsExprStmt(call1))))
 
     // Mutable Map
     val ast1 = js {
@@ -255,7 +255,7 @@ class ScalaToJsConverterTest extends FunSuite {
       a("field") = a("field2")
     }
     val stmt = JsExprStmt(JsBinOp("=", JsAccess(JsIdent("a"), JsString("field")), JsAccess(JsIdent("a"), JsString("field2"))))
-    assert(ast1 === JsBlock(List(JsVarDef("a", JsAnonObjDecl(map)), stmt)))
+    assert(ast1 === JsBlock(List(JsVarDef("a", JsAnonObjDecl(fields)), stmt)))
   }
 
   test("Switch declaration") {

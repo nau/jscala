@@ -29,6 +29,10 @@ object JavascriptPrinter {
       case JsSelect(qual, "apply")              => p(qual)
       case JsSelect(qual, name)                 => s"${p(qual)}.$name"
       case JsUnOp(operator, operand)            => operator + s(operand)
+      case JsBinOp("=", lhs, rhs)               => s"${p(lhs)} = ${p(rhs)}"
+      case JsBinOp(operator, lhs: JsBinOp, rhs: JsBinOp) => s"${s(lhs)} $operator ${s(rhs)}"
+      case JsBinOp(operator, lhs: JsBinOp, rhs) => s"${s(lhs)} $operator ${p(rhs)}"
+      case JsBinOp(operator, lhs, rhs: JsBinOp) => s"${p(lhs)} $operator ${s(rhs)}"
       case JsBinOp(operator, lhs, rhs)          => s"${p(lhs)} $operator ${p(rhs)}"
       case JsNew(call)                          => s"""new ${p(call)}"""
       case JsCall(callee, params)               => s"""${p(callee)}(${params.map(p(_)).mkString(", ")})"""

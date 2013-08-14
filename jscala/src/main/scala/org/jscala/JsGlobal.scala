@@ -226,6 +226,13 @@ object console {
 }
 
 trait JsDynamic extends Dynamic {
+  def unary_! = true
+  def ||(a: Any) = this
+  def &&(a: Any) = this
+  def +(a: Any) = this
+  def -(a: Any) = this
+  def *(a: Any) = this
+  def /(a: Any) = this
   def apply(a: Any*) = this
   def applyDynamic(name: String)(args: Any*) = this
   def selectDynamic(name: String) = this

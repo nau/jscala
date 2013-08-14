@@ -56,24 +56,30 @@ object JScalaExample {
 
   def tetris() {
     class Canvas(var width: Int, var height: Int, var clientWidth: Int, var clientHeight: Int) extends JsDynamic
+    class Stats extends JsDynamic
     val ast = javascript {
       //-------------------------------------------------------------------------
       // base helper methods
       //-------------------------------------------------------------------------
 
       def get(id: String) = document.getElementById(id)
-      def hide(id: String) = { get(id).style.visibility = "hidden"; }
-      def show(id: String) = { get(id).style.visibility = null;     }
-      def html(id: String, html: String) = { get(id).innerHTML = html;            }
+      def hide(id: String) { get(id).style.visibility = "hidden"; }
+      def show(id: String) { get(id).style.visibility = null;     }
+      def html(id: String, html: String) { get(id).innerHTML = html;            }
 
       def timestamp() = { new Date().getTime() }
       def random(min: Int, max: Int) = { (min + (Math.random() * (max - min)));            }
       def randomChoice(choices: Array[Int]) = choices(Math.round(random(0, choices.length-1)).as[Int])
 
-      val requestAnimationFrame = (callback: () => Unit, element: Canvas) => {
-        window.setTimeout(callback, 1000 / 60)
+      if (!window.requestAnimationFrame) {
+        val func = (callback: () => Unit, element: Canvas) => {
+          window.setTimeout(callback, 1000 / 60)
+        }
+        window.requestAnimationFrame = window.webkitRequestAnimationFrame ||
+          window.mozRequestAnimationFrame    ||
+          window.oRequestAnimationFrame      ||
+          window.msRequestAnimationFrame     || func
       }
-      window.requestAnimationFrame = requestAnimationFrame
 
       //-------------------------------------------------------------------------
       // game constants
@@ -81,6 +87,7 @@ object JScalaExample {
 
       val KEY     = new { val ESC = 27; val SPACE = 32; val LEFT = 37; val UP = 38; val RIGHT = 39; val DOWN = 40 }
       val DIR     = new { val UP = 0; val RIGHT = 1; val DOWN = 2; val LEFT = 3; val MIN = 0; val MAX = 3 }
+      val stats   = new Stats()
       val canvas  = get("canvas").as[Canvas]
       val ctx     = canvas.getContext("2d")
       val ucanvas = get("upcoming").as[Element]
@@ -144,7 +151,7 @@ object JScalaExample {
         val blocks = `type`.blocks(dir)
         var bit = 0x8000
         while (bit > 0) {
-          if ((blocks & bit) == true) {
+          if ((blocks & bit) != 0) {
             fn(x + col, y + row)
           }
           col += 1
@@ -181,16 +188,36 @@ object JScalaExample {
         new Piece(`type`, DIR.UP, Math.round(random(0, nx - `type`.size)).as[Int], 0)
       }
 
-
       //-------------------------------------------------------------------------
       // GAME LOOP
       //-------------------------------------------------------------------------
 
+      def run() {
+        showStats()
+        addEvents() // attach keydown and resize events
+        var last = timestamp()
+        var now = timestamp()
+        def frame() {
+          now = timestamp()
+          update(Math.min(1, (now - last) / 1000.0).as[Int]) // using requestAnimationFrame have to be able to handle large delta"s caused when it "hibernates" in a background or non-visible tab
+          draw()
+          stats.update()
+          last = now
+          window.requestAnimationFrame(frame _, canvas)
+        }
+        resize() // setup all our sizing information
+        reset()  // reset the per-game variables
+        frame()  // start the first frame
+      }
 
+      def showStats() {
+        stats.domElement.id = "stats"
+        get("menu").appendChild(stats.domElement.as[Node])
+      }
 
       def addEvents() {
         document.addEventListener("keydown", keydown _, false)
-//        window.addEventListener("resize", resize _, false)
+        window.addEventListener("resize", resize _, false)
       }
 
       def resize() {
@@ -326,10 +353,15 @@ object JScalaExample {
       def drop() {
         if (!move(DIR.DOWN)) {
           addScore(10)
+          console.log("addScore")
           dropPiece()
+          console.log("dropPiece")
           removeLines()
+          console.log("removeLines")
           setCurrentPiece(next)
+          console.log("setCurrentPiece")
           setNextPiece(randomPiece())
+          console.log("setNextPiece")
           clearActions()
           if (occupied(current.`type`, current.x, current.y, current.dir)) {
             lose()
@@ -352,10 +384,11 @@ object JScalaExample {
           complete = true
           x = 0
           while (x < nx) {
-            if (getBlock(x, y) != null)
+            if (!(getBlock(x, y).as[Boolean]))
               complete = false
             x += 1
           }
+          console.log("After while x")
           if (complete) {
             removeLine(y)
             y = y + 1 // recheck same line
@@ -363,6 +396,7 @@ object JScalaExample {
           }
           y -= 1
         }
+        console.log("After while y")
         if (n > 0) {
           addRows(n)
           addScore(100*Math.pow(2,n-1).as[Int]) // 1: 100, 2: 200, 3: 400, 4: 800
@@ -373,6 +407,7 @@ object JScalaExample {
         var x = 0
         var y = n
         while (y >= 0) {
+          x = 0
           while (x < nx) {
             val b = if (y == 0) null else getBlock(x, y-1)
             setBlock(x, y, b)
@@ -414,6 +449,7 @@ object JScalaExample {
           var y = 0
           var block: Block = null
           while (y < ny) {
+            x = 0
             while (x < nx) {
               block = getBlock(x,y)
               if (block != null)
@@ -443,7 +479,7 @@ object JScalaExample {
 
       def drawScore() {
         if (invalid.score) {
-          val text: JString = "00000" + score
+          val text: JString = "00000" + vscore
           html("score", text.slice(-5).toString())
           invalid.score = false
         }
@@ -468,22 +504,6 @@ object JScalaExample {
       //-------------------------------------------------------------------------
       // FINALLY, lets run the game
       //-------------------------------------------------------------------------
-
-      def run() {
-        addEvents() // attach keydown and resize events
-        var last = timestamp()
-        var now = timestamp()
-        def frame() {
-          now = timestamp()
-          update(Math.min(1, (now - last) / 1000.0).as[Int]) // using requestAnimationFrame have to be able to handle large delta"s caused when it "hibernates" in a background or non-visible tab
-          draw()
-          last = now
-          requestAnimationFrame(frame _, canvas)
-        }
-        resize() // setup all our sizing information
-        reset()  // reset the per-game variables
-        frame()  // start the first frame
-      }
 
       run()
     }

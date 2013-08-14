@@ -44,7 +44,7 @@ case class JsCall(callee: JsExpr, params: List[JsExpr]) extends JsExpr
 case class JsNew(ctor: JsCall) extends JsExpr
 case class JsThrow(expr: JsExpr) extends JsExpr
 case class JsAnonFunDecl(params: List[String], body: JsStmt) extends JsExpr
-case class JsAnonObjDecl(fields: Map[String, JsExpr]) extends JsExpr
+case class JsAnonObjDecl(fields: List[(String, JsExpr)]) extends JsExpr
 
 case class JsBlock(stmts: List[JsStmt]) extends JsStmt
 case class JsTry(body: JsStmt, cat: Option[JsCatch], fin: Option[JsStmt]) extends JsStmt
