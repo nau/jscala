@@ -1,3 +1,4 @@
+import java.awt.Desktop
 import sbt._
 import sbt.Keys._
 
@@ -50,10 +51,17 @@ object BuildSettings {
 object JScalaBuild extends Build {
   import BuildSettings._
 
+  val tetris = TaskKey[Unit]("tetris", "Translates tetris Scala code to Javascript and runs the game")
+
+  val tetrisTask = tetris <<= (baseDirectory in examples, fullClasspath in Runtime, runner in run, streams) map { (bd, cp, r, s) =>
+    r.run("org.jscalaexample.Tetris", Build.data(cp), Seq((bd / "javascript-tetris" / "tetris.js").toString), s.log)
+    Desktop.getDesktop.browse(bd / "javascript-tetris" / "index.html" toURI)
+  }
+
   lazy val root: Project = Project(
     "jscala",
     file("."),
-    settings = buildSettings
+    settings = buildSettings /*++ Seq(tetrisTask)*/
   ) aggregate(jscala, examples)
   
 
@@ -71,6 +79,7 @@ object JScalaBuild extends Build {
     "jscala-examples",
     file("jscala-examples"),
     settings = buildSettings ++ Seq(
+      tetrisTask,
       libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "1.9.1" % "test")
     )
   ) dependsOn(jscala)
