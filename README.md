@@ -147,7 +147,7 @@ Planned Features
 
 * Traits support
 * JavaScript frameworks support: jQuery, Angular.js etc
-* Web framewroks support: Play, Lift
+* Web frameworks support: Play, Lift
 
 Feedback
 ========
