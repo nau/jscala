@@ -38,4 +38,27 @@ class JavascriptPrinterTest extends FunSuite {
                            |for(i in a){console.log(i)
                            |};""".stripMargin)
   }
+
+  test("Ternary operator") {
+    val ast = js { if ((Math.PI > 3) && (Math.PI < 4)) Math.PI else Math.E }
+    assert(ast.asString === "((Math.PI > 3) && (Math.PI < 4)) ? Math.PI : Math.E")
+  }
+
+  test("Switches") {
+    val ast = js {
+      val a = 1 match {
+        case 1 | 2 => 1
+      }
+    }
+    assert(ast.asString ===
+      """{
+        |  var a;
+        |switch (1) {
+        |    case 1:
+        |    case 2:
+        |      a = 1;
+        |      break;
+        |  };
+        |}""".stripMargin)
+  }
 }

@@ -1,6 +1,12 @@
 package org.jscala
 
 object JavascriptPrinter {
+  def simplify(ast: JsAst): JsAst = ast match {
+    case JsBlock(stmts) => JsBlock(stmts.filter(_ != JsExprStmt(JsUnit)))
+    case JsCase(const, JsBlock(List(stmt))) => JsCase(const, stmt)
+    case t => t
+  }
+
   def print(ast: JsAst, indent: Int): String = {
     def ind(c: Int = 0) = " " * (indent + c)
     def p(ast: JsAst) = print(ast, indent)
@@ -15,7 +21,7 @@ object JavascriptPrinter {
     }
     def !< = "{\n"
     def !> = "\n" + ind() + "}"
-    ast match {
+    simplify(ast) match {
       case JsLazy(f)                            => p(f())
       case JsNull                               => "null"
       case JsBool(value)                        => value.toString
@@ -34,18 +40,17 @@ object JavascriptPrinter {
       case JsBinOp(operator, lhs: JsBinOp, rhs) => s"${s(lhs)} $operator ${p(rhs)}"
       case JsBinOp(operator, lhs, rhs: JsBinOp) => s"${p(lhs)} $operator ${s(rhs)}"
       case JsBinOp(operator, lhs, rhs)          => s"${p(lhs)} $operator ${p(rhs)}"
-      case JsNew(call)                          => s"""new ${p(call)}"""
+      case JsNew(call)                          => s"new ${p(call)}"
+      case JsCall(JsSelect(callee: JsAnonFunDecl, "apply"), params) => s"""(${p(callee)})(${params.map(p(_)).mkString(", ")})"""
       case JsCall(callee, params)               => s"""${p(callee)}(${params.map(p(_)).mkString(", ")})"""
       case JsBlock(Nil)                         => "{}"
       case JsBlock(stmts)                       => !< + stmts.map(p2(_) + ";\n").mkString + ind() + "}"
       case JsExprStmt(jsExpr)                   => p(jsExpr)
+      case JsIf(cond, JsExprStmt(expr), Some(JsExprStmt(els))) => s"${s(cond)} ? ${p(expr)} : ${p(els)}"
       case JsIf(cond, thenp, elsep)             => s"if (${p(cond)}) ${p(thenp)}" + elsep.map(e => s" else ${p(e)}").getOrElse("")
-      case JsSwitch(expr, cases, default)       =>  s"""switch (${p(expr)}) {
-                                                    |${cases.map(p2).mkString("\n")}
-                                                    |${default.map(p2).getOrElse("")}
-                                                    |${" " * indent}}""".stripMargin
-
-      case JsCase(const, body)                  => s"case ${p(const)}:\n${p2(body)}\n${ind(2)}break;"
+      case JsSwitch(expr, cases, default)       =>  s"switch (${p(expr)}) " +
+        !< + cases.map(p2).mkString("\n") + default.map(d => "\n" + p2(d)).getOrElse("") + !>
+      case JsCase(consts, body)                 => consts.map(c => s"case ${p(c)}:\n").mkString(ind()) + p2(body) + ";\n" + ind(2) + "break;"
       case JsDefault(body)                      => s"default:\n${p2(body)}\n${ind(2)}break;"
       case JsWhile(cond, body)                  => s"while (${p(cond)}) ${p(body)}"
       case JsTry(body, cat, fin)                =>
@@ -58,11 +63,11 @@ object JavascriptPrinter {
       case JsVarDef(ident, JsUnit)              => s"var $ident"
       case JsVarDef(ident, initializer)         => s"var $ident = ${p(initializer)}"
       case JsFunDecl(ident, params, body)       => s"""function $ident(${params.mkString(", ")}) ${p(body)}"""
-      case JsAnonFunDecl(params, body)          => s"""(function (${params.mkString(", ")}) ${p3(body)})""" // Wrap in parens to allow easy IIFEs
+      case JsAnonFunDecl(params, body)          => s"""function (${params.mkString(", ")}) ${p3(body)}"""
       case JsAnonObjDecl(fields)                =>
         if (fields.isEmpty) "{}" else fields.map{ case (k, v) => ind(2) + s"""$k: ${p(v)}"""}.mkString(!<, ",\n", !>)
       case JsObjDecl(name, params, fields)              =>
-        val fs = (for ((n, v) <- fields) yield ind(2) + s"this.$n = ${p(v)}").mkString(";\n")
+        val fs = (for ((n, v) <- fields) yield ind(2) + s"this.$n = ${p(v)};").mkString("\n")
         val body = fs
         s"""function $name(${params.mkString(", ")}) {\n$body\n${ind()}}"""
       case JsReturn(jsExpr)                     => s"return ${p(jsExpr)}"

@@ -55,7 +55,7 @@ case class JsWhile(cond: JsExpr, body: JsStmt) extends JsStmt
 case class JsFor(index: JsIdent, from: JsNum, until: JsExpr, body: JsStmt) extends JsStmt
 case class JsForIn(coll: JsExpr, ident: JsIdent, body: JsStmt) extends JsStmt
 sealed trait JsSwitchable extends JsStmt
-case class JsCase(const: JsExpr, body: JsStmt) extends JsSwitchable
+case class JsCase(const: List[JsExpr], body: JsStmt) extends JsSwitchable
 case class JsDefault(body: JsStmt) extends JsSwitchable
 case class JsSwitch(expr: JsExpr, cases: List[JsCase], default: Option[JsDefault]) extends JsStmt
 case class JsVarDef(ident: String, initializer: JsExpr) extends JsStmt

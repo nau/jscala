@@ -118,7 +118,8 @@ class ScalaToJsConverterTest extends FunSuite {
     assert(js { val a = b + 2 } === JsBlock(List(JsVarDef("a", JsBinOp("+", JsIdent("b"), JsNum(2, false))))))
     assert(js { if (a > 0) b } === JsIf(JsBinOp(">", ja, JsNum(0, false)), JsExprStmt(jb), None))
     assert(js { if (a > 0) b else a } === JsIf(JsBinOp(">", ja, JsNum(0, false)), JsExprStmt(jb), Some(JsExprStmt(ja))))
-    assert(js { while (a > 0) b } === JsWhile(JsBinOp(">", ja, JsNum(0, false)), JsExprStmt(jb)))
+    val whileBody = JsExprStmt(JsCall(JsSelect(JsIdent("Math"), "random"), List()))
+    assert(js { while (a > 0) Math.random() } === JsWhile(JsBinOp(">", ja, JsNum(0, false)), whileBody))
     val body = JsBlock(List(JsExprStmt(JsBinOp("=", jss, JsBinOp("+", jss, ja))), JsExprStmt(JsBinOp("=", ja, JsBinOp("+", ja, JsNum(1.0, false))))))
     val expected = JsWhile(JsBinOp(">", ja, JsNum(0, false)), body)
     assert(js {
@@ -352,5 +353,26 @@ class ScalaToJsConverterTest extends FunSuite {
     val call = JsCall(JsSelect(JsCall(JsSelect(JsIdent("$"), "apply"), List(JsString("button"), JsIdent("this"))), "click"), List(anonFunDecl))
     val update = JsBinOp("=", JsSelect(JsIdent("$"), "field"), JsSelect(JsIdent("$"), "select"))
     assert(ast === JsBlock(List(request, foo, JsExprStmt(call), JsExprStmt(update))))
+    val js = javascript($(this).find("input").array)
+    println(js.asString)
+  }
+
+  test("Traits") {
+    val ast = javascript {
+      trait A {
+        def f1() = 1
+        def abstr(i: Int): String
+        val self = this
+      }
+      trait B
+      trait C extends B
+      class D(p: String) extends A with C {
+        def abstr(i: Int) = i.toString()
+      }
+      def bar(a: A) = a.abstr(a.self.f1())
+      val a = new D("Test")
+      bar(a)
+    }
+    assert(ast.eval() === "1")
   }
 }

@@ -77,6 +77,8 @@ class ScalaToJsConverter[C <: Context](val c: C) {
     jsStringLit orElse jsNumLit orElse jsBoolLit orElse jsNullLit orElse jsUnitLit
   }
 
+  private val traits = collection.mutable.HashMap[String, List[Tree]]()
+
   def convert(tree: Tree): c.Expr[JsAst] = {
     //      println((tree))
 //          println(showRaw(tree))
@@ -328,16 +330,17 @@ class ScalaToJsConverter[C <: Context](val c: C) {
 
     def jsSwitchGen(expr: Tree, cases: List[CaseDef], f: Tree => Tree) = {
       val cs = cases collect {
-        case CaseDef(const@Literal(Constant(_)), EmptyTree, body) => List(reify(JsCase(jsLit(const).splice, jsStmt(f(body)).splice)))
-        case CaseDef(sel@Select(path, n), EmptyTree, body) => List(reify(JsCase(jsExpr(sel).splice, jsStmt(f(body)).splice)))
+        case CaseDef(const@Literal(Constant(_)), EmptyTree, body) => reify(JsCase(List(jsLit(const).splice), jsStmt(f(body)).splice))
+        case CaseDef(sel@Select(path, n), EmptyTree, body) => reify(JsCase(List(jsExpr(sel).splice), jsStmt(f(body)).splice))
         case CaseDef(Alternative(xs), EmptyTree, body) =>
           val stmt = jsStmt(f(body))
-          for (const <- xs) yield reify(JsCase(jsLit(const).splice, stmt.splice))
+          val consts = listToExpr(xs map(c => jsLit(c)))
+          reify(JsCase(consts.splice, stmt.splice))
       }
       val df = (cases collect {
         case CaseDef(Ident(nme.WILDCARD), EmptyTree, body) => reify(Some(JsDefault(jsStmt(f(body)).splice)))
       }).headOption.getOrElse(reify(None))
-      val css = listToExpr(cs.flatten)
+      val css = listToExpr(cs)
       reify(JsSwitch(jsExpr(expr).splice, css.splice, df.splice))
     }
 
@@ -345,13 +348,25 @@ class ScalaToJsConverter[C <: Context](val c: C) {
       case Match(expr, cases) => jsSwitchGen(expr, cases, t => t)
     }
 
-    lazy val objectFields: PFT[(String, Expr[JsExpr])] = {
-      case f@DefDef(mods, n, _, argss, _, body) if n != nme.CONSTRUCTOR && !mods.hasFlag(Flags.ACCESSOR.toLong.asInstanceOf[FlagSet]) => n.decoded -> jsExpr(Function(argss.flatten, body))
-      case ValDef(mods, n, _, rhs) if !rhs.equalsStructure(EmptyTree) && !mods.hasFlag(Flags.PARAMACCESSOR.toLong.asInstanceOf[FlagSet]) => n.decoded.trim -> jsExpr(rhs)
+    def eligibleDef(f: DefDef) = {
+      f.name != nme.CONSTRUCTOR && f.name.decoded != "$init$" && !f.mods.hasFlag(Flags.ACCESSOR.toLong.asInstanceOf[FlagSet] | Flag.DEFERRED)
     }
 
-    lazy val jsClassDecl: ToExpr[JsObjDecl] = {
-      case cd@ClassDef(_, clsName, _, Template(_, _, body)) =>
+    lazy val objectFields: PFT[(String, Expr[JsExpr])] = {
+      case f@DefDef(mods, n, _, argss, _, body) if eligibleDef(f) =>
+//        println(s"DEFEFEFEF ${n.decoded}" + showRaw(body) + mods)
+        n.decoded -> jsExpr(Function(argss.flatten, body))
+      case ValDef(mods, n, _, rhs) if !rhs.equalsStructure(EmptyTree)
+        && !mods.hasFlag(Flags.PARAMACCESSOR.toLong.asInstanceOf[FlagSet] | Flag.ABSTRACT) => n.decoded.trim -> jsExpr(rhs)
+//      case s => println("AAAAAAAAAA " + showRaw(s)); "aa" -> jsExpr(s)
+    }
+
+    lazy val jsClassDecl: ToExpr[JsStmt] = {
+      case cd@ClassDef(mods, clsName, _, Template(_, _, body)) if mods.hasFlag(Flag.TRAIT) =>
+        // Remember trait AST to embed its definitions in concrete class for simplicity
+        traits(cd.symbol.fullName) = body
+        reify(JsExprStmt(JsUnit))
+      case cd@ClassDef(_, clsName, _, t@Template(base, _, body)) =>
         val ctor = body.collect {
           case f@DefDef(mods, n, _, argss, _, Block(stats, _)) if n == nme.CONSTRUCTOR =>
             val a = argss.headOption.map(vp => vp.map(v => v.name.decoded)).getOrElse(Nil)
@@ -359,7 +374,9 @@ class ScalaToJsConverter[C <: Context](val c: C) {
         }
         if (ctor.size != 1) c.abort(c.enclosingPosition, "Only single primary constructor is currently supported. Sorry.")
         val init = ctor.head.map(f => f -> reify(JsIdent(c.literal(f).splice)))
-        val defs = body.collect(objectFields)
+        val inherited = t.tpe.baseClasses.map(_.fullName).flatMap {bc => traits.get(bc).toList }
+        val bigBody = body ::: inherited.foldLeft(List[Tree]())(_ ::: _)
+        val defs = bigBody.collect(objectFields)
         val fields = init ::: defs
         val fs = listToExpr(fields.map { case (n, v) => reify((c.literal(n).splice, v.splice)) })
         val args = listToExpr(ctor.head.map(arg => c.literal(arg)))
