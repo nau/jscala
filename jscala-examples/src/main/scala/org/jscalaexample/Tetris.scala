@@ -210,9 +210,9 @@ object Tetris {
       //-------------------------------------------------------------------------
 
       def play() = { hide("start"); reset();          playing = true;  }
-      def lose() = { show("start"); setVisualScore(); playing = false; }
+      def lose() = { show("start"); setVisualScore(-1); playing = false; }
 
-      def setVisualScore(n: Int = -1) = {
+      def setVisualScore(n: Int) = {
         val s = if (n != -1) n else score
         vscore = s
         invalidateScore()
@@ -308,15 +308,10 @@ object Tetris {
       def drop() {
         if (!move(DIR.DOWN)) {
           addScore(10)
-          console.log("addScore")
           dropPiece()
-          console.log("dropPiece")
           removeLines()
-          console.log("removeLines")
           setCurrentPiece(next)
-          console.log("setCurrentPiece")
           setNextPiece(randomPiece())
-          console.log("setNextPiece")
           clearActions()
           if (occupied(current.`type`, current.x, current.y, current.dir)) {
             lose()
@@ -343,7 +338,6 @@ object Tetris {
               complete = false
             x += 1
           }
-          console.log("After while x")
           if (complete) {
             removeLine(y)
             y = y + 1 // recheck same line
@@ -351,7 +345,6 @@ object Tetris {
           }
           y -= 1
         }
-        console.log("After while y")
         if (n > 0) {
           addRows(n)
           addScore(100*Math.pow(2,n-1).as[Int]) // 1: 100, 2: 200, 3: 400, 4: 800
