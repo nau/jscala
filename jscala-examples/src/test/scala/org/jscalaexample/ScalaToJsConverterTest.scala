@@ -101,6 +101,12 @@ class ScalaToJsConverterTest extends FunSuite {
       a
     }
     assert(matchExprAst.eval() === "one or two")
+    val ternaryAst = js {
+      val a = if (Math.PI > 3) 3 else 4
+      def f(i: Int) = i
+      f(if (Math.PI > 3) 3 else 4) + a
+    }
+    assert(ternaryAst.eval() === 6)
   }
 
   test("Simple statements") {
@@ -117,7 +123,8 @@ class ScalaToJsConverterTest extends FunSuite {
     assert(js { val a = 0 } === JsBlock(List(JsVarDef("a", JsNum(0, false)))))
     assert(js { val a = b + 2 } === JsBlock(List(JsVarDef("a", JsBinOp("+", JsIdent("b"), JsNum(2, false))))))
     assert(js { if (a > 0) b } === JsIf(JsBinOp(">", ja, JsNum(0, false)), JsExprStmt(jb), None))
-    assert(js { if (a > 0) b else a } === JsIf(JsBinOp(">", ja, JsNum(0, false)), JsExprStmt(jb), Some(JsExprStmt(ja))))
+    val stmt1 = JsExprStmt(JsCall(JsSelect(JsIdent("console"), "log"), List(JsString(""))))
+    assert(js { if (a > 0) console.log("") else a } === JsIf(JsBinOp(">", ja, JsNum(0, false)), stmt1, Some(JsExprStmt(ja))))
     val whileBody = JsExprStmt(JsCall(JsSelect(JsIdent("Math"), "random"), List()))
     assert(js { while (a > 0) Math.random() } === JsWhile(JsBinOp(">", ja, JsNum(0, false)), whileBody))
     val body = JsBlock(List(JsExprStmt(JsBinOp("=", jss, JsBinOp("+", jss, ja))), JsExprStmt(JsBinOp("=", ja, JsBinOp("+", ja, JsNum(1.0, false))))))
@@ -353,8 +360,6 @@ class ScalaToJsConverterTest extends FunSuite {
     val call = JsCall(JsSelect(JsCall(JsSelect(JsIdent("$"), "apply"), List(JsString("button"), JsIdent("this"))), "click"), List(anonFunDecl))
     val update = JsBinOp("=", JsSelect(JsIdent("$"), "field"), JsSelect(JsIdent("$"), "select"))
     assert(ast === JsBlock(List(request, foo, JsExprStmt(call), JsExprStmt(update))))
-    val js = javascript($(this).find("input").array)
-    println(js.asString)
   }
 
   test("Traits") {

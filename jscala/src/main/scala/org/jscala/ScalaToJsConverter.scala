@@ -247,6 +247,14 @@ class ScalaToJsConverter[C <: Context](val c: C) {
         reify(JsIf(condJsExpr.splice, thenJsExpr.splice, elseJsStmt.splice))
     }
 
+    lazy val jsTernaryExpr: ToExpr[JsTernary] = {
+      case If(cond, thenp, elsep) if !thenp.tpe.=:=(typeOf[Unit]) && !isUnit(elsep) && jsExpr.isDefinedAt(thenp) && jsExpr.isDefinedAt(elsep) =>
+        val condJsExpr = jsExpr(cond)
+        val thenJsExpr = jsExpr(thenp)
+        val elseExpr = reify(jsExpr(elsep).splice)
+        reify(JsTernary(condJsExpr.splice, thenJsExpr.splice, elseExpr.splice))
+    }
+
     lazy val jsWhileStmt: ToExpr[JsWhile] = {
       case LabelDef(termName, Nil, If(cond, Block(List(body), _), _)) if termName.encoded.startsWith("while$") =>
         val condJsExpr = jsExpr(cond)
@@ -274,11 +282,16 @@ class ScalaToJsConverter[C <: Context](val c: C) {
     lazy val jsVarDefStmt: ToExpr[JsStmt] = {
       case ValDef(_, name, _, rhs) =>
         val identifier = c.literal(name.decoded)
-        val funcs = Seq(jsIfExpr, jsMatchExpr).reduceLeft(_ orElse _) andThen { expr =>
-          reify(JsStmts(List(JsVarDef(identifier.splice, JsUnit), expr.splice)))
+        if (jsTernaryExpr.isDefinedAt(rhs)) {
+          reify(JsVarDef(identifier.splice, jsTernaryExpr(rhs).splice))
+        } else {
+          val funcs = Seq(jsIfExpr, jsMatchExpr).reduceLeft(_ orElse _) andThen { expr =>
+            reify(JsStmts(List(JsVarDef(identifier.splice, JsUnit), expr.splice)))
+          }
+          val x = name -> rhs
+          funcs.applyOrElse(x, (t: (TermName, Tree)) => reify(JsVarDef(identifier.splice, jsExpr(rhs).splice)))
         }
-        val x = name -> rhs
-        funcs.applyOrElse(x, (t: (TermName, Tree)) => reify(JsVarDef(identifier.splice, jsExpr(rhs).splice)))
+
     }
 
     lazy val jsFunBody: ToExpr[JsBlock] = {
@@ -418,7 +431,8 @@ class ScalaToJsConverter[C <: Context](val c: C) {
       jsSelect,
       jsIdent,
       jsThis,
-      jsAnonObjDecl
+      jsAnonObjDecl,
+      jsTernaryExpr
     ) reduceLeft( _ orElse _)
     lazy val jsExprStmt: ToExpr[JsExprStmt] = jsExpr andThen (jsExpr => reify(JsExprStmt(jsExpr.splice)))
 

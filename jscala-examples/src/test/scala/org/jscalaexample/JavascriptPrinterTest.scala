@@ -53,7 +53,7 @@ class JavascriptPrinterTest extends FunSuite {
     assert(ast.asString ===
       """{
         |  var a;
-        |switch (1) {
+        |  switch (1) {
         |    case 1:
         |    case 2:
         |      a = 1;

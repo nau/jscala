@@ -4,6 +4,7 @@ object JavascriptPrinter {
   def simplify(ast: JsAst): JsAst = ast match {
     case JsBlock(stmts) => JsBlock(stmts.filter(_ != JsExprStmt(JsUnit)))
     case JsCase(const, JsBlock(List(stmt))) => JsCase(const, stmt)
+    case JsDefault(JsBlock(List(stmt))) => JsDefault(stmt)
     case t => t
   }
 
@@ -46,12 +47,13 @@ object JavascriptPrinter {
       case JsBlock(Nil)                         => "{}"
       case JsBlock(stmts)                       => !< + stmts.map(p2(_) + ";\n").mkString + ind() + "}"
       case JsExprStmt(jsExpr)                   => p(jsExpr)
+      case JsTernary(cond, thenp, elsep)        => s"${s(cond)} ? ${p(thenp)} : ${p(elsep)}"
       case JsIf(cond, JsExprStmt(expr), Some(JsExprStmt(els))) => s"${s(cond)} ? ${p(expr)} : ${p(els)}"
       case JsIf(cond, thenp, elsep)             => s"if (${p(cond)}) ${p(thenp)}" + elsep.map(e => s" else ${p(e)}").getOrElse("")
       case JsSwitch(expr, cases, default)       =>  s"switch (${p(expr)}) " +
         !< + cases.map(p2).mkString("\n") + default.map(d => "\n" + p2(d)).getOrElse("") + !>
       case JsCase(consts, body)                 => consts.map(c => s"case ${p(c)}:\n").mkString(ind()) + p2(body) + ";\n" + ind(2) + "break;"
-      case JsDefault(body)                      => s"default:\n${p2(body)}\n${ind(2)}break;"
+      case JsDefault(body)                      => "default:\n" + p2(body) + ";\n" + ind(2) + "break;"
       case JsWhile(cond, body)                  => s"while (${p(cond)}) ${p(body)}"
       case JsTry(body, cat, fin)                =>
         val (b, c, f) = (p(body), cat.map(p2).getOrElse(""), fin.map(f => s"finally {${p2(f)}\n}").getOrElse(""))
@@ -72,7 +74,7 @@ object JavascriptPrinter {
         s"""function $name(${params.mkString(", ")}) {\n$body\n${ind()}}"""
       case JsReturn(jsExpr)                     => s"return ${p(jsExpr)}"
       case JsUnit                               => ""
-      case JsStmts(stmts)                       => stmts.map(p(_)).mkString(";\n")
+      case JsStmts(stmts)                       => p(stmts.head) + ";\n" + stmts.tail.map(p4(_)).mkString(";\n")
     }
   }
 }
