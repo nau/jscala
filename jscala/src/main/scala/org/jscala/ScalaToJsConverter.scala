@@ -15,7 +15,7 @@ class ScalaToJsConverter[C <: Context](val c: C) {
   private val encodedUnaryOpsMap = unaryOps.map(op => newTermName(s"unary_$op").encodedName -> op).toMap
   private val binOps = Seq("*", "/", "%",  "+", "-", "<<", ">>", ">>>",
     "<", ">", "<=", ">=",
-    "==", "!=", "&", "|", "&&", "||")
+    "==", "!=", "&", "|", "^", "&&", "||")
   private val encodedBinOpsMap = binOps.map(op => newTermName(op).encodedName -> op).toMap
   private lazy val seqFactorySym = c.typeOf[SeqFactory[Seq]].typeSymbol
   private lazy val mapFactorySym = c.typeOf[MapFactory[collection.Map]].typeSymbol
@@ -166,6 +166,17 @@ class ScalaToJsConverter[C <: Context](val c: C) {
       case Apply(path, args) if path.is("scala.Array.apply") =>
         val params = listToExpr(args map jsExpr)
         reify(JsArray(params.splice))
+      case Apply(Ident(Name("Array")), args) =>
+        val params = listToExpr(args map jsExpr)
+        reify(JsArray(params.splice))
+      case Apply(Select(New(AppliedTypeTree(Ident(arr), _)), ctor), List(Literal(Constant(_)))) if ctor == nme.CONSTRUCTOR && arr == newTypeName("Array") =>
+        reify(JsArray(Nil))
+      case Apply(Select(a@New(t@TypeTree()), ctor), List(Literal(Constant(_))))
+        if ctor == nme.CONSTRUCTOR && t.original.isInstanceOf[AppliedTypeTree] && t.original.asInstanceOf[AppliedTypeTree].tpt.equalsStructure(Select(Ident(newTermName("scala")), newTypeName("Array"))) =>
+        reify(JsArray(Nil))
+      case Apply(Select(a@New(t@TypeTree()), ctor), List(Literal(Constant(_)))) =>
+        println("QQQQQQQQQQQQQ")
+      reify(JsArray(Nil))
       case Apply(TypeApply(Select(path, Name("apply")), _), args) if path.tpe.baseClasses.contains(seqFactorySym) =>
         val params = listToExpr(args map jsExpr)
         reify(JsArray(params.splice))
@@ -225,7 +236,7 @@ class ScalaToJsConverter[C <: Context](val c: C) {
         reify(JsBinOp("=", callee.splice, jsExpr(arg).splice))
       case Apply(Select(sel, Name("selectDynamic")), List(Literal(Constant(name: String)))) =>
         reify(JsSelect(jsExpr(sel).splice, c.literal(name).splice))
-      case app@Apply(fun, args) if app.tpe <:< typeOf[JsAst] =>
+      case app@Apply(fun, args) if c.typeCheck(app).tpe <:< typeOf[JsAst] =>
         val expr = c.Expr[JsAst](app)
         reify(JsLazy(() => expr.splice))
       case Apply(fun, args) =>
@@ -248,7 +259,7 @@ class ScalaToJsConverter[C <: Context](val c: C) {
     }
 
     lazy val jsTernaryExpr: ToExpr[JsTernary] = {
-      case If(cond, thenp, elsep) if !thenp.tpe.=:=(typeOf[Unit]) && !isUnit(elsep) && jsExpr.isDefinedAt(thenp) && jsExpr.isDefinedAt(elsep) =>
+      case If(cond, thenp, elsep) if !c.typeCheck(thenp, silent = true).tpe.=:=(typeOf[Unit]) && !isUnit(elsep) && jsExpr.isDefinedAt(thenp) && jsExpr.isDefinedAt(elsep) =>
         val condJsExpr = jsExpr(cond)
         val thenJsExpr = jsExpr(thenp)
         val elseExpr = reify(jsExpr(elsep).splice)
@@ -300,12 +311,12 @@ class ScalaToJsConverter[C <: Context](val c: C) {
         reify(JsBlock(listToExpr(body).splice))
       case b@Block(stmts, expr) =>
         val lastExpr = if (isUnit(expr)) Nil
-        else if (expr.tpe =:= typeOf[Unit]) List(jsStmt(expr))
+        else if (c.typeCheck(expr, silent = true).tpe =:= typeOf[Unit]) List(jsStmt(expr))
         else List(jsReturn(expr))
         val ss = listToExpr(stmts.map(jsStmt) ::: lastExpr)
         reify(JsBlock(ss.splice))
       case rhs =>
-        if (rhs.tpe =:= typeOf[Unit]) reify(JsBlock(List(jsStmt(rhs).splice)))
+        if (c.typeCheck(rhs, silent = true).tpe =:= typeOf[Unit]) reify(JsBlock(List(jsStmt(rhs).splice)))
         else reify(JsBlock(List(jsReturn(rhs).splice)))
     }
 
@@ -387,7 +398,8 @@ class ScalaToJsConverter[C <: Context](val c: C) {
         }
         if (ctor.size != 1) c.abort(c.enclosingPosition, "Only single primary constructor is currently supported. Sorry.")
         val init = ctor.head.map(f => f -> reify(JsIdent(c.literal(f).splice)))
-        val inherited = t.tpe.baseClasses.map(_.fullName).flatMap {bc => traits.get(bc).toList }
+//        val inherited = t.tpe.baseClasses.map(_.fullName).flatMap {bc => traits.get(bc).toList }
+        val inherited = List[List[Tree]]()
         val bigBody = body ::: inherited.foldLeft(List[Tree]())(_ ::: _)
         val defs = bigBody.collect(objectFields)
         val fields = init ::: defs

@@ -16,7 +16,7 @@ object BuildSettings {
     publishArtifact in Test := false,
     pomIncludeRepository := (_ => false),
     pomExtra := extraPom,
-//    addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.3-RC1" % "2.0.0-SNAPSHOT"),
+    addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.3-RC1" % "2.0.0-SNAPSHOT"),
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
@@ -63,7 +63,7 @@ object JScalaBuild extends Build {
     "jscala",
     file("."),
     settings = buildSettings
-  ) aggregate(jscala, examples)
+  ) aggregate(jscala, jscalaAnnots, examples)
   
 
 
@@ -76,6 +76,14 @@ object JScalaBuild extends Build {
     )
   )
 
+  lazy val jscalaAnnots: Project = Project(
+    "jscala-annots",
+    file("jscala-annots"),
+    settings = buildSettings ++ Seq(
+      libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _ % "provided")
+    )
+  ) dependsOn(jscala)
+
   lazy val examples: Project = Project(
     "jscala-examples",
     file("jscala-examples"),
@@ -83,6 +91,6 @@ object JScalaBuild extends Build {
       tetrisTask,
       libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "1.9.1" % "test")
     )
-  ) dependsOn(jscala)
+  ) dependsOn(jscalaAnnots)
 }
 

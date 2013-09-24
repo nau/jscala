@@ -39,6 +39,7 @@ object JavascriptPrinter {
       case JsBinOp("=", lhs, rhs)               => s"${p(lhs)} = ${p(rhs)}"
       case JsBinOp(operator, lhs: JsBinOp, rhs: JsBinOp) => s"${s(lhs)} $operator ${s(rhs)}"
       case JsBinOp(operator, lhs: JsBinOp, rhs) => s"${s(lhs)} $operator ${p(rhs)}"
+      case JsBinOp(operator, lhs, rhs: JsTernary) => s"${s(lhs)} $operator ${s(rhs)}"
       case JsBinOp(operator, lhs, rhs: JsBinOp) => s"${p(lhs)} $operator ${s(rhs)}"
       case JsBinOp(operator, lhs, rhs)          => s"${p(lhs)} $operator ${p(rhs)}"
       case JsNew(call)                          => s"new ${p(call)}"

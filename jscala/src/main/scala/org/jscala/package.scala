@@ -4,8 +4,6 @@ import javax.script.ScriptEngineManager
 import com.yahoo.platform.yui.compressor.JavaScriptCompressor
 import java.io.{StringWriter, StringReader}
 import org.mozilla.javascript.ErrorReporter
-import scala.reflect.internal.Flags
-import scala.collection.generic.{MapFactory, SeqFactory}
 
 package object jscala {
   import language.experimental.macros
@@ -89,6 +87,9 @@ package object jscala {
   def parseInt(str: String) = 1
   def typeof(x: Any) = ""
   def include(js: String) = ""
+  def print(x: Any) {
+    System.out.println(x)
+  }
 
   def inject(a: JsAst) = ???
   /**
