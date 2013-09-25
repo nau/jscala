@@ -398,8 +398,8 @@ class ScalaToJsConverter[C <: Context](val c: C) {
         }
         if (ctor.size != 1) c.abort(c.enclosingPosition, "Only single primary constructor is currently supported. Sorry.")
         val init = ctor.head.map(f => f -> reify(JsIdent(c.literal(f).splice)))
-//        val inherited = t.tpe.baseClasses.map(_.fullName).flatMap {bc => traits.get(bc).toList }
-        val inherited = List[List[Tree]]()
+        val inherited = t.tpe.baseClasses.map(_.fullName).flatMap {bc => traits.get(bc).toList }
+//        val inherited = List[List[Tree]]()
         val bigBody = body ::: inherited.foldLeft(List[Tree]())(_ ::: _)
         val defs = bigBody.collect(objectFields)
         val fields = init ::: defs
@@ -462,7 +462,7 @@ class ScalaToJsConverter[C <: Context](val c: C) {
       jsExprStmt
     ) reduceLeft (_ orElse _)
 
-    lazy val jsAst: ToExpr[JsAst] = jsExpr orElse jsStmt
+    lazy val jsAst: ToExpr[JsAst] = jsBlock orElse jsExpr orElse jsStmt
 
     jsAst apply tree
   }

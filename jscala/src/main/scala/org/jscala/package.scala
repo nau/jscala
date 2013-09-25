@@ -62,7 +62,9 @@ package object jscala {
   implicit object floatJsSerializer extends JsSerializer[Float] { def apply(a: Float) = JsNum(a, true) }
   implicit object doubleJsSerializer extends JsSerializer[Double] { def apply(a: Double) = JsNum(a, true) }
   implicit object stringJsSerializer extends JsSerializer[String] { def apply(a: String) = JsString(a) }
-  implicit object arrJsSerializer extends JsSerializer[collection.Seq[JsExpr]] { def apply(a: collection.Seq[JsExpr]) = JsArray(a.toList) }
+  implicit def arrJsSerializer[A](implicit ev: JsSerializer[A]): JsSerializer[Array[A]] = 
+    new JsSerializer[Array[A]] { def apply(a: Array[A]) = JsArray(a.map(ev.apply).toList) }
+  implicit object seqJsSerializer extends JsSerializer[collection.Seq[JsExpr]] { def apply(a: collection.Seq[JsExpr]) = JsArray(a.toList) }
   implicit object mapJsSerializer extends JsSerializer[collection.Map[String,JsExpr]] { def apply(a: collection.Map[String,JsExpr]) = JsAnonObjDecl(a.toList) }
   implicit def funcJsSerializer[A](implicit ev: JsSerializer[A]): JsSerializer[() => A] = new JsSerializer[() => A] { def apply(a: () => A) = ev.apply(a()) }
   implicit class ToJsExpr[A](a: A)(implicit ev: JsSerializer[A]) {

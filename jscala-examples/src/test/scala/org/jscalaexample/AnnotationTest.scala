@@ -8,13 +8,16 @@ import org.jscala._
  */
 class AnnotationTest extends FunSuite {
 
-  /*test("Class") {
+  test("Class") {
     @JavaScript class Aes(val key: Array[Int]) {
       val encTable = Array(new Array[Int](256), new Array[Int](256), new Array[Int](256), new Array[Int](256), new Array[Int](256))
-      def f1() = 1
+      def f1() = 15
     }
-    val a = new Aes(Array(1, 1, 1, 1))
-    println(a.javaScript.asString)
-  }*/
+    object Aes {
+      def test = 3
+    }
+    val a = new Aes(Array(1, 1, 1, 1)) 
+//    println(Aes.javaScript.asString)
+  }
 
 }

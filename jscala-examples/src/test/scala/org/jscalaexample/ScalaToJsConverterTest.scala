@@ -368,7 +368,7 @@ class ScalaToJsConverterTest extends FunSuite {
     assert(ast === JsBlock(List(request, foo, JsExprStmt(call), JsExprStmt(update))))
   }
 
-  ignore("Traits") {
+  test("Traits") {
     val ast = javascript {
       trait A {
         def f1() = 1
@@ -384,7 +384,7 @@ class ScalaToJsConverterTest extends FunSuite {
       val a = new D("Test")
       bar(a)
     }
-    println(ast.asString)
+//    println(ast.asString)
     assert(ast.eval() === "1")
   }
 }
