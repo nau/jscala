@@ -13,7 +13,7 @@ Supported Features:
 * if, while, for..in and for statements
 * Scala if as an expression (e.g. val a = if (true) 1 else 2)
 * Scala match as JavaScript switch
-* Basic Scala class definition to JavaScript object definition translation
+* Basic Scala class/trait definition to JavaScript object definition translation
 * Global JavaScript functions (parseInt etc)
 * Basic Browser objects (window, history, location etc)
 * Basic HTML DOM objects (Document, Element, Attribute, Node, NodeList etc)
@@ -21,6 +21,7 @@ Supported Features:
 * Values and function call injections from your Scala code
 * Generated JavaScript eval using Java ScriptEngine
 * Pretty printing and compression using YUI compressor
+* Basic @JavaScript macro annotation support
 
 Examples
 ========
@@ -130,6 +131,50 @@ println(js.eval())
     
 That's it!
 
+How To Try Macro Annotations
+============================
+In your build.sbt add
+
+    scalaVersion := "2.10.2"
+
+    resolvers += Resolver.sonatypeRepo("snapshots")
+    
+    addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.3-RC2" % "2.0.0-SNAPSHOT")
+
+    libraryDependencies += "org.jscala" %% "jscala-macros" % "0.3-SNAPSHOT"
+    
+    libraryDependencies += "org.jscala" %% "jscala-annots" % "0.3-SNAPSHOT"
+
+    libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
+
+In your code
+
+```scala
+import org.jscala._
+@JavaScript class Test {
+  def hello() {
+    print("Hello")
+  }
+}
+// Run on JVM
+(new Test()).hello() // prints "Hello"
+val testJs = Test.javaScript.as[JsStmt] // Get class Test JsAst
+val main = javascript {
+  val t = new Test()
+  t.hello()
+}
+val js = testJs join main // join class Test definition with main code
+js.eval() // prints "Hello" using Rhino
+println(js.asString) // prints resulting JavaScript
+```
+
+See AES example:
+
+https://github.com/nau/jscala/blob/master/jscala-examples/src/main/scala/org/jscalaexample/AES.scala
+
+It's AES Scala implementation which is used for both Scala and JavaScript encryption/decryption.
+
+
 How To Build And Play Some Tetris
 =================================
 
@@ -145,7 +190,6 @@ Tetris sources are here: [jscala-examples/src/main/scala/org/jscalaexample/Tetri
 Planned Features
 ================
 
-* Traits support
 * JavaScript frameworks support: jQuery, Angular.js etc
 * Web frameworks support: Play, Lift
 
