@@ -5,6 +5,18 @@ import org.jscala._
 import org.jscala.{javascript=>js}
 
 class JavascriptPrinterTest extends FunSuite {
+  test("String escaping") {
+    val ast = js {
+      val quote1 = """&copy; "something""""
+      val quote2 = "&copy; \"something\""
+    }
+    assert(ast.asString ===
+      """{
+        |  var quote1 = "&copy; \"something\"";
+        |  var quote2 = "&copy; \"something\"";
+        |}""".stripMargin)
+  }
+
   test("Printer") {
     val ast = js {
       val a = Array("1", "2", "3")
