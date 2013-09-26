@@ -6,7 +6,7 @@ import scala.reflect.macros.Context
 import scala.collection.generic.{SeqFactory, MapFactory}
 import scala.reflect.internal.Flags
 
-class ScalaToJsConverter[C <: Context](val c: C) {
+class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) {
   import c.universe._
   type PFT[A] = PartialFunction[Tree, A]
   type ToExpr[A] = PFT[Expr[A]]
@@ -81,7 +81,7 @@ class ScalaToJsConverter[C <: Context](val c: C) {
 
   def convert(tree: Tree): c.Expr[JsAst] = {
     //      println((tree))
-//          println(showRaw(tree))
+    if (debug) println(showRaw(tree))
 
     lazy val jsThis: ToExpr[JsIdent] = {
       case This(name) => reify(JsIdent("this"))
@@ -145,6 +145,10 @@ class ScalaToJsConverter[C <: Context](val c: C) {
         reify(JsFor(JsIdent(c.literal(index.decoded).splice), JsNum(c.literal(from).splice, false), jsExpr(untilExpr).splice, forBody.splice))
       case Apply(TypeApply(Select(Apply(TypeApply(path, _), List(Ident(coll))), Name("foreach")), _), List(Function(List(ValDef(_, ident, _, _)), body)))
         if path.is("scala.Predef.refArrayOps") =>
+        val forBody = jsStmt(body)
+        reify(JsForIn(JsIdent(c.literal(coll.decoded).splice), JsIdent(c.literal(ident.decoded).splice), forBody.splice))
+      case Apply(TypeApply(Select(Apply(TypeApply(Select(path, Name(n)), _), List(Ident(coll))), Name("foreach")), _), List(Function(List(ValDef(_, ident, _, _)), body)))
+        if path.is("org.jscala.package") && n.startsWith("implicit") =>
         val forBody = jsStmt(body)
         reify(JsForIn(JsIdent(c.literal(coll.decoded).splice), JsIdent(c.literal(ident.decoded).splice), forBody.splice))
     }

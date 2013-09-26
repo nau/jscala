@@ -4,6 +4,7 @@ import javax.script.ScriptEngineManager
 import com.yahoo.platform.yui.compressor.JavaScriptCompressor
 import java.io.{StringWriter, StringReader}
 import org.mozilla.javascript.ErrorReporter
+import scala.annotation.StaticAnnotation
 
 package object jscala {
   import language.experimental.macros
@@ -108,10 +109,15 @@ package object jscala {
    * Macro that generates Javascript AST representation of its argument
    */
   def javascript(expr: Any): JsAst = macro Macros.javascriptImpl
+  def javascriptDebug(expr: Any): JsAst = macro Macros.javascriptDebugImpl
 
   object Macros {
     def javascriptImpl(c: Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
-      val parser = new ScalaToJsConverter[c.type](c)
+      val parser = new ScalaToJsConverter[c.type](c, debug = false)
+      parser.convert(expr.tree)
+    }
+    def javascriptDebugImpl(c: Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
+      val parser = new ScalaToJsConverter[c.type](c, debug = true)
       parser.convert(expr.tree)
     }
   }

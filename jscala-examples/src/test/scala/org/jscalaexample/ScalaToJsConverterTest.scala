@@ -201,11 +201,13 @@ class ScalaToJsConverterTest extends FunSuite {
       a.pop()
     } === JsBlock(List(JsVarDef("a", JsArray(List(JsString("1"), JsString("2")))), JsExprStmt(call1))))
     val assign = JsExprStmt(JsBinOp("=",JsAccess(JsIdent("a"),JsNum(0.0,false)),JsAccess(JsIdent("a"),JsNum(1.0,false))))
-    assert(js {
+    val forin = JsForIn(JsIdent("a"), JsIdent("x"), JsExprStmt(JsCall(JsIdent("print"), List(JsIdent("x")))))
+    assert(javascriptDebug {
       val a = JArray(1, 2)
+      for (x <- a) print(x)
       a(0) = a(1)
       a.pop()
-    } === JsBlock(List(JsVarDef("a", JsArray(List(JsNum(1.0,false), JsNum(2.0,false)))), assign, JsExprStmt(call1))))
+    } === JsBlock(List(JsVarDef("a", JsArray(List(JsNum(1.0,false), JsNum(2.0,false)))), forin, assign, JsExprStmt(call1))))
     val ast = js {
       val a = Seq("1", "2")
       val b = ArrayBuffer(1, 2)
