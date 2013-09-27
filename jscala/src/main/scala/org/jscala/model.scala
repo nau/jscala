@@ -1,7 +1,10 @@
 package org.jscala
 
 
-sealed trait JsAst
+sealed trait JsAst {
+  def block: JsBlock
+  def join(a: JsAst): JsAst
+}
 
 sealed trait JsStmt extends JsAst {
   def block = JsBlock(List(this))
@@ -23,6 +26,7 @@ sealed trait JsStmt extends JsAst {
 sealed trait JsExpr extends JsAst {
   def stmt = JsExprStmt(this)
   def block = JsBlock(List(this.stmt))
+  def join(a: JsAst) = stmt.join(a)
 }
 sealed trait JsLit extends JsExpr
 

@@ -17,7 +17,6 @@ object AesExample {
     println("Encrypted Scala " + encrypted.mkString(","))
     val decrypted = aes.crypt(encrypted, true)
     println("Decrypted Scala " + decrypted.mkString(","))
-    val aesJs = Aes.javaScript.as[JsStmt]
     val main = javascript {
       val d = inject(data)
       val k = inject(key)
@@ -28,7 +27,7 @@ object AesExample {
       val decrypted = aes.crypt(encrypted, true)
       print("Decrypted JS " + decrypted)
     }
-    val js = aesJs join main
+    val js = Aes.javaScript join main
     js.eval()
   }
 }
