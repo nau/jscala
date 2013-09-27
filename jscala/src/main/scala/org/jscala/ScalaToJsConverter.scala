@@ -243,6 +243,14 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) {
       case app@Apply(fun, args) if c.typeCheck(app).tpe <:< typeOf[JsAst] =>
         val expr = c.Expr[JsAst](app)
         reify(JsLazy(() => expr.splice))
+      case Apply(Select(p@Ident(_), Name(fun)), args) if p.symbol.isModule =>
+        val filteredDefaults = args collect {
+          case arg@Select(_, n) if n.decoded.contains("$default$") => None
+          case arg@Ident(n) if n.decoded.contains("$default$") => None
+          case arg => Some(jsExpr(arg))
+        }
+        val params = listToExpr(filteredDefaults.flatten)
+        reify(JsCall(JsIdent(c.literal(fun).splice), params.splice))
       case Apply(fun, args) =>
         val callee = jsExpr apply fun
         val filteredDefaults = args collect {

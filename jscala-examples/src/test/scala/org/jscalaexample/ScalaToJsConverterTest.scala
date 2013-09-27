@@ -202,7 +202,7 @@ class ScalaToJsConverterTest extends FunSuite {
     } === JsBlock(List(JsVarDef("a", JsArray(List(JsString("1"), JsString("2")))), JsExprStmt(call1))))
     val assign = JsExprStmt(JsBinOp("=",JsAccess(JsIdent("a"),JsNum(0.0,false)),JsAccess(JsIdent("a"),JsNum(1.0,false))))
     val forin = JsForIn(JsIdent("a"), JsIdent("x"), JsExprStmt(JsCall(JsIdent("print"), List(JsIdent("x")))))
-    assert(javascriptDebug {
+    assert(js {
       val a = JArray(1, 2)
       for (x <- a) print(x)
       a(0) = a(1)
@@ -234,6 +234,9 @@ class ScalaToJsConverterTest extends FunSuite {
     }
     val jsIf = JsIf(JsBinOp(">", JsSelect(JsIdent("a"), "length"), JsNum(1.0, false)), JsExprStmt(JsRaw("console.log(a[1])")), None)
     assert(ast2 === JsBlock(List(JsVarDef("a", JsRaw("[1, 2]")), jsIf)))
+    object L { def f(x: Int): Int = ??? }
+    val ast3 = js { L.f(3) }
+    assert(ast3 === JsCall(JsIdent("f"), List(JsNum(3, false))))
   }
 
   test("RegExp") {
@@ -294,14 +297,14 @@ class ScalaToJsConverterTest extends FunSuite {
       }
     }
     assert(ast.eval() === 1.0)
-    val ast1 = javascript { try { 1 } finally { 2 } }
-    assert(ast1.eval() === 2.0)
+    val ast1 = javascript { try { 1 } finally { print(2) }}
+    assert(ast1 === JsTry(JsNum(1, false).stmt, None, Some(JsCall(JsIdent("print"), List(JsNum(2, false))).stmt)))
     val ast2 = javascript {
       try { 1 } catch {
         case  e: Exception => 2
-      } finally { 3 }
+      } finally { print(3) }
     }
-    assert(ast2.eval() === 3.0)
+    assert(ast2 === JsTry(JsNum(1, false).stmt, Some(JsCatch(JsIdent("e"), JsNum(2, false).stmt)), Some(JsCall(JsIdent("print"), List(JsNum(3, false))).stmt)))
   }
 
   test("Object declaration") {
