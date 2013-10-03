@@ -26,6 +26,7 @@ class ScalaToJsConverterTest extends FunSuite {
   test("Binary operators") {
     val a = 0
     val b = 1
+    val f = 2.0
     val c = true
     val d = false
     var s = 0
@@ -33,8 +34,10 @@ class ScalaToJsConverterTest extends FunSuite {
     val jb = JsIdent("b")
     val jc = JsIdent("c")
     val jd = JsIdent("d")
+    val jf = JsIdent("f")
     assert(js(a * b) === JsBinOp("*", ja, jb))
-    assert(js(a / b) === JsBinOp("/", ja, jb))
+    assert(js(b / f) === JsBinOp("/", jb, jf))
+    assert(js(a / b) === JsBinOp("|", JsBinOp("/", ja, jb), JsNum(0, false)))
     assert(js(a % b) === JsBinOp("%", ja, jb))
     assert(js(a + b) === JsBinOp("+", ja, jb))
     assert(js(a - b) === JsBinOp("-", ja, jb))
@@ -52,9 +55,9 @@ class ScalaToJsConverterTest extends FunSuite {
     assert(js(c && d) === JsBinOp("&&", jc, jd))
     assert(js(c || d) === JsBinOp("||", jc, jd))
     assert(js{s = a + b} === JsBinOp("=", JsIdent("s"), JsBinOp("+", ja, jb)))
-    val lhs = JsBinOp("!=", JsBinOp("/", JsBinOp("+", ja, JsBinOp("*", jb, ja)), ja), jb)
+    val lhs = JsBinOp("!=", JsBinOp("/", JsBinOp("+", ja, JsBinOp("*", jb, ja)), jf), jb)
     val expected = JsBinOp("&&", lhs, JsBinOp("==", jc, jb))
-    assert(js(((a + b * a) / a != b) && c == b) === expected)
+    assert(js(((a + b * a) / f != b) && c == b) === expected)
   }
 
   test("Simple expressions") {

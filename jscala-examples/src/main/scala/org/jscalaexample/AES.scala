@@ -23,9 +23,9 @@ object AesExample {
       val aes = new Aes(k)
       aes.init()
       val encrypted = aes.crypt(d, false)
-      print("Encrypted JS " + encrypted)
+      print("Encrypted JS " + encrypted + "\n")
       val decrypted = aes.crypt(encrypted, true)
-      print("Decrypted JS " + decrypted)
+      print("Decrypted JS " + decrypted + "\n")
     }
     val js = Aes.javaScript join main
     js.eval()
