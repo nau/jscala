@@ -9,12 +9,20 @@ class JavascriptPrinterTest extends FunSuite {
     val ast = js {
       val quote1 = """&copy; "something""""
       val quote2 = "&copy; \"something\""
+      val multiline1 = "a\nb\tc"
+      val multiline2 =
+        """a
+          b
+          c"""
     }
     assert(ast.asString ===
       """{
         |  var quote1 = "&copy; \"something\"";
         |  var quote2 = "&copy; \"something\"";
+        |  var multiline1 = "a\nb\tc";
+        |  var multiline2 = "a\n          b\n          c";
         |}""".stripMargin)
+    ast.eval()
   }
 
   test("Printer") {

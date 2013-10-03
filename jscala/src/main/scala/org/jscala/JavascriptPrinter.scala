@@ -1,7 +1,7 @@
 package org.jscala
 
 object JavascriptPrinter {
-  private[this] val quoteRegex = "\\\"".r
+  private[this] val substitutions = Map("\\\"".r -> "\\\\\"", "\\n".r -> "\\\\n", "\\r".r -> "\\\\r", "\\t".r -> "\\\\t")
   def simplify(ast: JsAst): JsAst = ast match {
     case JsBlock(stmts) => JsBlock(stmts.filter(_ != JsExprStmt(JsUnit)))
     case JsCase(const, JsBlock(List(stmt))) => JsCase(const, stmt)
@@ -27,7 +27,7 @@ object JavascriptPrinter {
       case JsLazy(f)                            => p(f())
       case JsNull                               => "null"
       case JsBool(value)                        => value.toString
-      case JsString(value)                      => "\"" + quoteRegex.replaceAllIn(value, "\\\\\"") + "\""
+      case JsString(value)                      => "\"" + substitutions.foldLeft(value){case (v, (r, s)) => r.replaceAllIn(v, s)} + "\""
       case JsNum(value, true)                   => value.toString
       case JsNum(value, false)                  => value.toLong.toString
       case JsArray(values)                      => values.map(p).mkString("[", ", ", "]")
