@@ -64,27 +64,29 @@
 <div class="highlight highlight-scala"><pre><span class="k">val</span> <span class="n">replacement</span> <span class="k">=</span> <span class="s">"text"</span>
 <span class="k">val</span> <span class="n">js</span> <span class="k">=</span> <span class="n">javascript</span> <span class="o">{</span>
   <span class="n">window</span><span class="o">.</span><span class="n">setTimeout</span><span class="o">(()</span> <span class="k">=&gt;</span> <span class="o">{</span>
-    <span class="k">val</span> <span class="n">r</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">RegExp</span><span class="o">(</span><span class="s">"d.*"</span><span class="o">,</span> <span class="n">inject</span><span class="o">(</span><span class="n">replacement</span><span class="o">))</span>
+    <span class="k">val</span> <span class="n">r</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">RegExp</span><span class="o">(</span><span class="s">"d.*"</span><span class="o">,</span> <span class="s">"g"</span><span class="o">)</span>
     <span class="k">class</span> <span class="nc">Point</span><span class="o">(</span><span class="k">val</span> <span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="k">val</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span>
     <span class="k">val</span> <span class="n">point</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Point</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
     <span class="k">def</span> <span class="n">func</span><span class="o">(</span><span class="n">i</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="n">r</span><span class="o">.</span><span class="n">exec</span><span class="o">(</span><span class="n">i</span><span class="o">)</span>
     <span class="k">val</span> <span class="n">list</span> <span class="k">=</span> <span class="n">document</span><span class="o">.</span><span class="n">getElementById</span><span class="o">(</span><span class="s">"myList2"</span><span class="o">)</span>
     <span class="k">val</span> <span class="n">map</span> <span class="k">=</span> <span class="n">collection</span><span class="o">.</span><span class="n">mutable</span><span class="o">.</span><span class="nc">Map</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">String</span><span class="o">]()</span>
-    <span class="k">for</span> <span class="o">(</span><span class="n">idx</span> <span class="k">&lt;-</span> <span class="mi">0</span> <span class="n">until</span> <span class="n">list</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">length</span><span class="o">)</span> <span class="o">{</span>
-      <span class="k">val</span> <span class="n">attr</span> <span class="k">=</span> <span class="n">list</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">item</span><span class="o">(</span><span class="n">idx</span><span class="o">).</span><span class="n">as</span><span class="o">[</span><span class="kt">Attribute</span><span class="o">]</span>
-      <span class="k">val</span> <span class="n">text</span> <span class="k">=</span> <span class="k">if</span> <span class="o">(</span><span class="n">attr</span><span class="o">.</span><span class="n">textContent</span><span class="o">.</span><span class="n">length</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="n">attr</span><span class="o">.</span><span class="n">textContent</span> <span class="k">else</span> <span class="s">"default"</span>
-      <span class="n">map</span><span class="o">(</span><span class="n">attr</span><span class="o">.</span><span class="n">name</span><span class="o">)</span> <span class="k">=</span> <span class="n">func</span><span class="o">(</span><span class="n">text</span><span class="o">)</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">typeof</span><span class="o">(</span><span class="n">map</span><span class="o">)</span> <span class="o">==</span> <span class="s">"string"</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">for</span> <span class="o">(</span><span class="n">idx</span> <span class="k">&lt;-</span> <span class="mi">0</span> <span class="n">until</span> <span class="n">list</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">length</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">val</span> <span class="n">attr</span> <span class="k">=</span> <span class="n">list</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">item</span><span class="o">(</span><span class="n">idx</span><span class="o">).</span><span class="n">asInstanceOf</span><span class="o">[</span><span class="kt">Attribute</span><span class="o">]</span>
+        <span class="n">map</span><span class="o">(</span><span class="n">attr</span><span class="o">.</span><span class="n">name</span><span class="o">)</span> <span class="k">=</span> <span class="n">func</span><span class="o">(</span><span class="n">attr</span><span class="o">.</span><span class="n">textContent</span><span class="o">).</span><span class="n">asInstanceOf</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
+      <span class="o">}</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+      <span class="k">val</span> <span class="n">obj</span> <span class="k">=</span> <span class="k">new</span> <span class="o">{</span>
+        <span class="k">val</span> <span class="n">field</span> <span class="k">=</span> <span class="mi">1</span>
+        <span class="k">def</span> <span class="n">func2</span><span class="o">(</span><span class="n">i</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="s">"string"</span>
+      <span class="o">}</span>
+      <span class="k">val</span> <span class="n">links</span> <span class="k">=</span> <span class="nc">Array</span><span class="o">(</span><span class="s">"https://github.com/nau/scala"</span><span class="o">)</span>
+      <span class="k">for</span> <span class="o">(</span><span class="n">link</span> <span class="k">&lt;-</span> <span class="n">links</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">include</span><span class="o">(</span><span class="s">"var raw = 'JavaScript'"</span><span class="o">)</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">log</span><span class="o">(</span><span class="n">link</span> <span class="o">+</span> <span class="n">obj</span><span class="o">.</span><span class="n">func2</span><span class="o">(</span><span class="n">obj</span><span class="o">.</span><span class="n">field</span><span class="o">)</span> <span class="o">+</span> <span class="n">point</span><span class="o">.</span><span class="n">x</span><span class="o">)</span>
+      <span class="o">}</span>
+      <span class="n">window</span><span class="o">.</span><span class="n">location</span><span class="o">.</span><span class="n">href</span> <span class="k">=</span> <span class="n">links</span><span class="o">(</span><span class="mi">0</span><span class="o">).</span><span class="n">replace</span><span class="o">(</span><span class="s">"scala"</span><span class="o">,</span> <span class="s">"jscala"</span><span class="o">)</span>
     <span class="o">}</span>
-    <span class="k">val</span> <span class="n">obj</span> <span class="k">=</span> <span class="k">new</span> <span class="o">{</span>
-      <span class="k">val</span> <span class="n">field</span> <span class="k">=</span> <span class="mi">1</span>
-      <span class="k">def</span> <span class="n">func2</span><span class="o">(</span><span class="n">i</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="s">"string"</span>
-    <span class="o">}</span>
-    <span class="k">val</span> <span class="n">links</span> <span class="k">=</span> <span class="nc">Array</span><span class="o">(</span><span class="s">"https://github.com/nau/jscala"</span><span class="o">,</span> <span class="s">"https://github.com/lampepfl/scala-js"</span><span class="o">)</span>
-    <span class="k">for</span> <span class="o">(</span><span class="n">link</span> <span class="k">&lt;-</span> <span class="n">links</span><span class="o">)</span> <span class="o">{</span>
-      <span class="n">include</span><span class="o">(</span><span class="s">"var raw = 'JavaScript'"</span><span class="o">)</span>
-      <span class="n">console</span><span class="o">.</span><span class="n">log</span><span class="o">(</span><span class="n">link</span> <span class="o">+</span> <span class="n">obj</span><span class="o">.</span><span class="n">func2</span><span class="o">(</span><span class="n">obj</span><span class="o">.</span><span class="n">field</span><span class="o">)</span> <span class="o">+</span> <span class="n">point</span><span class="o">.</span><span class="n">x</span><span class="o">)</span>
-    <span class="o">}</span>
-    <span class="n">window</span><span class="o">.</span><span class="n">location</span><span class="o">.</span><span class="n">href</span> <span class="k">=</span> <span class="n">links</span><span class="o">(</span><span class="mi">0</span><span class="o">).</span><span class="n">replace</span><span class="o">(</span><span class="s">"jscala"</span><span class="o">,</span> <span class="s">"jscala/blob/master/README.md"</span><span class="o">)</span>
   <span class="o">},</span> <span class="mi">1000</span><span class="o">)</span>
 <span class="o">}</span>
 <span class="n">println</span><span class="o">(</span><span class="n">js</span><span class="o">.</span><span class="n">asString</span><span class="o">)</span>
@@ -92,11 +94,11 @@
 
 <p>It will print</p>
 
-<div class="highlight highlight-javascript"><pre><span class="nb">window</span><span class="p">.</span><span class="nx">setTimeout</span><span class="p">((</span><span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
-    <span class="kd">var</span> <span class="nx">r</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">RegExp</span><span class="p">(</span><span class="s2">"d.*"</span><span class="p">,</span> <span class="s2">"text"</span><span class="p">);</span>
+<div class="highlight highlight-javascript"><pre><span class="nb">window</span><span class="p">.</span><span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">r</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">RegExp</span><span class="p">(</span><span class="s2">"d.*"</span><span class="p">,</span> <span class="s2">"g"</span><span class="p">);</span>
     <span class="kd">function</span> <span class="nx">Point</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">y</span><span class="p">)</span> <span class="p">{</span>
       <span class="k">this</span><span class="p">.</span><span class="nx">x</span> <span class="o">=</span> <span class="nx">x</span><span class="p">;</span>
-      <span class="k">this</span><span class="p">.</span><span class="nx">y</span> <span class="o">=</span> <span class="nx">y</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">y</span> <span class="o">=</span> <span class="nx">y</span><span class="p">;</span>
     <span class="p">};</span>
     <span class="kd">var</span> <span class="nx">point</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Point</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
     <span class="kd">function</span> <span class="nx">func</span><span class="p">(</span><span class="nx">i</span><span class="p">)</span> <span class="p">{</span>
@@ -104,29 +106,24 @@
     <span class="p">};</span>
     <span class="kd">var</span> <span class="nx">list</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s2">"myList2"</span><span class="p">);</span>
     <span class="kd">var</span> <span class="nx">map</span> <span class="o">=</span> <span class="p">{};</span>
-    <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">idx</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">idx</span> <span class="o">&lt;</span> <span class="nx">list</span><span class="p">.</span><span class="nx">attributes</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">idx</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="k">typeof</span><span class="p">(</span><span class="nx">map</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"string"</span><span class="p">)</span> <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">idx</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">idx</span> <span class="o">&lt;</span> <span class="nx">list</span><span class="p">.</span><span class="nx">attributes</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="o">++</span><span class="nx">idx</span><span class="p">)</span> <span class="p">{</span>
       <span class="kd">var</span> <span class="nx">attr</span> <span class="o">=</span> <span class="nx">list</span><span class="p">.</span><span class="nx">attributes</span><span class="p">.</span><span class="nx">item</span><span class="p">(</span><span class="nx">idx</span><span class="p">);</span>
-      <span class="kd">var</span> <span class="nx">text</span><span class="p">;</span>
-      <span class="k">if</span> <span class="p">(</span><span class="nx">attr</span><span class="p">.</span><span class="nx">textContent</span><span class="p">.</span><span class="nx">length</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-        <span class="nx">text</span> <span class="o">=</span> <span class="nx">attr</span><span class="p">.</span><span class="nx">textContent</span><span class="p">;</span>
-      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-        <span class="nx">text</span> <span class="o">=</span> <span class="s2">"default"</span><span class="p">;</span>
+      <span class="nx">map</span><span class="p">[</span><span class="nx">attr</span><span class="p">.</span><span class="nx">name</span><span class="p">]</span> <span class="o">=</span> <span class="nx">func</span><span class="p">(</span><span class="nx">attr</span><span class="p">.</span><span class="nx">textContent</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">obj</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="nx">field</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="nx">func2</span><span class="o">:</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">i</span><span class="p">)</span> <span class="p">{</span>
+          <span class="k">return</span> <span class="s2">"string"</span><span class="p">;</span>
+        <span class="p">}</span>
       <span class="p">};</span>
-      <span class="nx">map</span><span class="p">[</span><span class="nx">attr</span><span class="p">.</span><span class="nx">name</span><span class="p">]</span> <span class="o">=</span> <span class="nx">func</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+      <span class="kd">var</span> <span class="nx">links</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"https://github.com/nau/scala"</span><span class="p">];</span>
+      <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">linkIdx</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">link</span> <span class="o">=</span> <span class="nx">links</span><span class="p">[</span><span class="nx">linkIdx</span><span class="p">];</span> <span class="nx">linkIdx</span> <span class="o">&lt;</span> <span class="nx">links</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">link</span> <span class="o">=</span> <span class="nx">links</span><span class="p">[</span><span class="o">++</span><span class="nx">linkIdx</span><span class="p">])</span> <span class="p">{</span>
+        <span class="kd">var</span> <span class="nx">raw</span> <span class="o">=</span> <span class="s1">'JavaScript'</span><span class="p">;</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">((</span><span class="nx">link</span> <span class="o">+</span> <span class="nx">obj</span><span class="p">.</span><span class="nx">func2</span><span class="p">(</span><span class="nx">obj</span><span class="p">.</span><span class="nx">field</span><span class="p">))</span> <span class="o">+</span> <span class="nx">point</span><span class="p">.</span><span class="nx">x</span><span class="p">);</span>
+      <span class="p">};</span>
+      <span class="nb">window</span><span class="p">.</span><span class="nx">location</span><span class="p">.</span><span class="nx">href</span> <span class="o">=</span> <span class="nx">links</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">replace</span><span class="p">(</span><span class="s2">"scala"</span><span class="p">,</span> <span class="s2">"jscala"</span><span class="p">);</span>
     <span class="p">};</span>
-    <span class="kd">var</span> <span class="nx">obj</span> <span class="o">=</span> <span class="p">{</span>
-      <span class="nx">field</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
-      <span class="nx">func2</span><span class="o">:</span> <span class="p">(</span><span class="kd">function</span> <span class="p">(</span><span class="nx">i</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">return</span> <span class="s2">"string"</span><span class="p">;</span>
-      <span class="p">})</span>
-    <span class="p">};</span>
-    <span class="kd">var</span> <span class="nx">links</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"https://github.com/nau/jscala"</span><span class="p">,</span> <span class="s2">"https://github.com/lampepfl/scala-js"</span><span class="p">];</span>
-    <span class="k">for</span> <span class="p">(</span><span class="nx">link</span> <span class="k">in</span> <span class="nx">links</span><span class="p">)</span> <span class="p">{</span>
-      <span class="kd">var</span> <span class="nx">raw</span> <span class="o">=</span> <span class="s1">'JavaScript'</span><span class="p">;</span>
-      <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">((</span><span class="nx">link</span> <span class="o">+</span> <span class="nx">obj</span><span class="p">.</span><span class="nx">func2</span><span class="p">(</span><span class="nx">obj</span><span class="p">.</span><span class="nx">field</span><span class="p">))</span> <span class="o">+</span> <span class="nx">point</span><span class="p">.</span><span class="nx">x</span><span class="p">);</span>
-    <span class="p">};</span>
-    <span class="nb">window</span><span class="p">.</span><span class="nx">location</span><span class="p">.</span><span class="nx">href</span> <span class="o">=</span> <span class="nx">links</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">replace</span><span class="p">(</span><span class="s2">"jscala"</span><span class="p">,</span> <span class="s2">"jscala/blob/master/README.md"</span><span class="p">);</span>
-  <span class="p">}),</span> <span class="mi">1000</span><span class="p">)</span>
+  <span class="p">},</span> <span class="mi">1000</span><span class="p">)</span>
 </pre></div>
 
 <h1>
@@ -137,8 +134,6 @@
 <pre><code>scalaVersion := "2.10.2"
 
 libraryDependencies += "org.jscala" %% "jscala-macros" % "0.2"
-
-libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
 </code></pre>
 
 <p>If you want to try the latest snapshot:</p>
@@ -148,8 +143,6 @@ libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
 resolvers += Resolver.sonatypeRepo("snapshots")
 
 libraryDependencies += "org.jscala" %% "jscala-macros" % "0.3-SNAPSHOT"
-
-libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
 </code></pre>
 
 <p>In your code</p>
@@ -177,8 +170,6 @@ addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.3-RC2" % "2.0.
 libraryDependencies += "org.jscala" %% "jscala-macros" % "0.3-SNAPSHOT"
 
 libraryDependencies += "org.jscala" %% "jscala-annots" % "0.3-SNAPSHOT"
-
-libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
 </code></pre>
 
 <p>In your code</p>
@@ -239,7 +230,7 @@ Tetris is fully written in Scala and translates to JavaScript mostly literally. 
     <!-- FOOTER  -->
     <div id="footer_wrap" class="outer">
       <footer class="inner">
-        <p class="copyright">JScala maintained by <a href="https://github.com/nau">Alexander Nemish</a></p>
+        <p class="copyright">JScala maintained by <a href="https://github.com/nau">nau</a></p>
         <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
       </footer>
     </div>
