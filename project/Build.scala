@@ -63,7 +63,7 @@ object JScalaBuild extends Build {
     "jscala",
     file("."),
     settings = buildSettings
-  ) aggregate(jscala, jscalaAnnots, examples)
+  ) aggregate(jscala, jscalaAnnots, examples, jscalaAngularJS_1_0, jscalaJQuery_2_0)
   
 
 
@@ -92,5 +92,17 @@ object JScalaBuild extends Build {
       libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "1.9.1" % "test")
     )
   ) dependsOn(jscalaAnnots)
+  
+  lazy val jscalaJQuery_2_0: Project = Project(
+    "jscala-jQuery_2_0",
+    file("jscala-jQuery/v2_0"),
+	settings = buildSettings ++ Seq( publishArtifact := false )
+  ) dependsOn(jscala)
+
+  lazy val jscalaAngularJS_1_0: Project = Project(
+    "jscala-angularJS_1_0",
+    file("jscala-angularJS/v1_0"),
+	settings = buildSettings ++ Seq( publishArtifact := false )
+  ) dependsOn(jscalaJQuery_2_0) 
 }
 
