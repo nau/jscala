@@ -32,27 +32,29 @@ This Scala code has no meaning but shows basic ideas:
 val replacement = "text"
 val js = javascript {
   window.setTimeout(() => {
-    val r = new RegExp("d.*", inject(replacement))
+    val r = new RegExp("d.*", "g")
     class Point(val x: Int, val y: Int)
     val point = new Point(1, 2)
     def func(i: String) = r.exec(i)
     val list = document.getElementById("myList2")
     val map = collection.mutable.Map[String, String]()
-    for (idx <- 0 until list.attributes.length) {
-      val attr = list.attributes.item(idx).as[Attribute]
-      val text = if (attr.textContent.length > 0) attr.textContent else "default"
-      map(attr.name) = func(text)
+    if (typeof(map) == "string") {
+      for (idx <- 0 until list.attributes.length) {
+        val attr = list.attributes.item(idx).asInstanceOf[Attribute]
+        map(attr.name) = func(attr.textContent).asInstanceOf[String]
+      }
+    } else {
+      val obj = new {
+        val field = 1
+        def func2(i: Int) = "string"
+      }
+      val links = Array("https://github.com/nau/scala")
+      for (link <- links) {
+        include("var raw = 'JavaScript'")
+        console.log(link + obj.func2(obj.field) + point.x)
+      }
+      window.location.href = links(0).replace("scala", "jscala")
     }
-    val obj = new {
-      val field = 1
-      def func2(i: Int) = "string"
-    }
-    val links = Array("https://github.com/nau/jscala", "https://github.com/lampepfl/scala-js")
-    for (link <- links) {
-      include("var raw = 'JavaScript'")
-      console.log(link + obj.func2(obj.field) + point.x)
-    }
-    window.location.href = links(0).replace("jscala", "jscala/blob/master/README.md")
   }, 1000)
 }
 println(js.asString)
@@ -61,11 +63,11 @@ println(js.asString)
 It will print
 
 ```javascript
-window.setTimeout((function () {
-    var r = new RegExp("d.*", "text");
+window.setTimeout(function () {
+    var r = new RegExp("d.*", "g");
     function Point(x, y) {
       this.x = x;
-      this.y = y
+      this.y = y;
     };
     var point = new Point(1, 2);
     function func(i) {
@@ -73,29 +75,24 @@ window.setTimeout((function () {
     };
     var list = document.getElementById("myList2");
     var map = {};
-    for (var idx = 0; idx < list.attributes.length; idx++) {
+    if (typeof(map) == "string") for (var idx = 0; idx < list.attributes.length; ++idx) {
       var attr = list.attributes.item(idx);
-      var text;
-      if (attr.textContent.length() > 0) {
-        text = attr.textContent;
-      } else {
-        text = "default";
+      map[attr.name] = func(attr.textContent);
+    } else {
+      var obj = {
+        field: 1,
+        func2: function (i) {
+          return "string";
+        }
       };
-      map[attr.name] = func(text);
+      var links = ["https://github.com/nau/scala"];
+      for (var linkIdx = 0, link = links[linkIdx]; linkIdx < links.length; link = links[++linkIdx]) {
+        var raw = 'JavaScript';
+        console.log((link + obj.func2(obj.field)) + point.x);
+      };
+      window.location.href = links[0].replace("scala", "jscala");
     };
-    var obj = {
-      field: 1,
-      func2: (function (i) {
-        return "string";
-      })
-    };
-    var links = ["https://github.com/nau/jscala", "https://github.com/lampepfl/scala-js"];
-    for (link in links) {
-      var raw = 'JavaScript';
-      console.log((link + obj.func2(obj.field)) + point.x);
-    };
-    window.location.href = links[0].replace("jscala", "jscala/blob/master/README.md");
-  }), 1000)
+  }, 1000)
 ```
       
 How To Use
@@ -106,8 +103,6 @@ In your build.sbt add
     scalaVersion := "2.10.2"
 
     libraryDependencies += "org.jscala" %% "jscala-macros" % "0.2"
-
-    libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
     
 If you want to try the latest snapshot:
 
@@ -116,8 +111,6 @@ If you want to try the latest snapshot:
     resolvers += Resolver.sonatypeRepo("snapshots")
 
     libraryDependencies += "org.jscala" %% "jscala-macros" % "0.3-SNAPSHOT"
-
-    libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
 
 In your code
 
@@ -144,8 +137,6 @@ In your build.sbt add
     libraryDependencies += "org.jscala" %% "jscala-macros" % "0.3-SNAPSHOT"
     
     libraryDependencies += "org.jscala" %% "jscala-annots" % "0.3-SNAPSHOT"
-
-    libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
 
 In your code
 
