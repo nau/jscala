@@ -32,7 +32,7 @@ class JavascriptPrinterTest extends FunSuite {
     }
     assert(ast.asString === """{
                             |  var a = ["1", "2", "3"];
-                            |  for (i in a) console.log(i);
+                            |  for (var iIdx = 0, i = a[iIdx]; iIdx < a.length; i = a[++iIdx]) console.log(i);
                             |}""".stripMargin)
   }
 
@@ -55,7 +55,9 @@ class JavascriptPrinterTest extends FunSuite {
       for (i <- a) console.log(i)
     }
     assert(ast.compress === """var a=["1","2","3"];
-                           |for(i in a){console.log(i)
+                           |for(var iIdx=0,i=a[iIdx];
+                           |iIdx<a.length;
+                           |i=a[++iIdx]){console.log(i)
                            |};""".stripMargin)
   }
 

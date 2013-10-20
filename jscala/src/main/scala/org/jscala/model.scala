@@ -57,13 +57,13 @@ case class JsCatch(ident: JsIdent, body: JsStmt) extends JsStmt
 case class JsExprStmt(jsExpr: JsExpr) extends JsStmt
 case class JsIf(cond: JsExpr, `then`: JsStmt, `else`: Option[JsStmt]) extends JsStmt
 case class JsWhile(cond: JsExpr, body: JsStmt) extends JsStmt
-case class JsFor(index: JsIdent, from: JsNum, until: JsExpr, body: JsStmt) extends JsStmt
-case class JsForIn(coll: JsExpr, ident: JsIdent, body: JsStmt) extends JsStmt
+case class JsFor(init: List[JsStmt], check: JsExpr, update: List[JsStmt], body: JsStmt) extends JsStmt
+case class JsForIn(ident: JsIdent, coll: JsExpr, body: JsStmt) extends JsStmt
 sealed trait JsSwitchable extends JsStmt
 case class JsCase(const: List[JsExpr], body: JsStmt) extends JsSwitchable
 case class JsDefault(body: JsStmt) extends JsSwitchable
 case class JsSwitch(expr: JsExpr, cases: List[JsCase], default: Option[JsDefault]) extends JsStmt
-case class JsVarDef(ident: String, initializer: JsExpr) extends JsStmt
+case class JsVarDef(idents: List[(String, JsExpr)]) extends JsStmt
 case class JsFunDecl(ident: String, params: List[String], body: JsStmt) extends JsStmt
 case class JsObjDecl(name: String, params: List[String], fields: List[(String, JsExpr)]) extends JsStmt
 case class JsReturn(jsExpr: JsExpr) extends JsStmt

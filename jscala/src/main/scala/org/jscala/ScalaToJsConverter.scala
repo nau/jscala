@@ -153,18 +153,44 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) {
     }
 
     lazy val jsForStmt: ToExpr[JsStmt] = {
+      /*
+        for (index <- from until untilExpr) body
+      */
       case Apply(TypeApply(Select(Apply(Select(Apply(fn, List(Literal(Constant(from: Int)))), Name("until")), List(untilExpr)), Name("foreach")), _),
-      List(Function(List(ValDef(_, index, _, _)), body))) if fn.is("scala.Predef.intWrapper") =>
+      List(Function(List(ValDef(_, Name(index), _, _)), body))) if fn.is("scala.Predef.intWrapper") =>
         val forBody = jsStmtOrDie(body)
-        reify(JsFor(JsIdent(c.literal(index.decoded).splice), JsNum(c.literal(from).splice, false), jsExprOrDie(untilExpr).splice, forBody.splice))
-      case Apply(TypeApply(Select(Apply(TypeApply(path, _), List(Ident(coll))), Name("foreach")), _), List(Function(List(ValDef(_, ident, _, _)), body)))
-        if path.is("scala.Predef.refArrayOps") =>
-        val forBody = jsStmtOrDie(body)
-        reify(JsForIn(JsIdent(c.literal(coll.decoded).splice), JsIdent(c.literal(ident.decoded).splice), forBody.splice))
-      case Apply(TypeApply(Select(Apply(TypeApply(Select(path, Name(n)), _), List(Ident(coll))), Name("foreach")), _), List(Function(List(ValDef(_, ident, _, _)), body)))
-        if path.is("org.jscala.package") && n.startsWith("implicit") =>
-        val forBody = jsStmtOrDie(body)
-        reify(JsForIn(JsIdent(c.literal(coll.decoded).splice), JsIdent(c.literal(ident.decoded).splice), forBody.splice))
+        val init = reify(varDef(c.literal(index).splice, JsNum(c.literal(from).splice, false)))
+        val check = reify(JsBinOp("<", JsIdent(c.literal(index).splice), jsExprOrDie(untilExpr).splice))
+        val update = reify(JsUnOp("++", JsIdent(c.literal(index).splice)).stmt)
+        reify(JsFor(List(init.splice), check.splice, List(update.splice), forBody.splice))
+      /*
+        val coll = Array(1, 2)
+        for (ident <- coll) body
+      */
+      case Apply(TypeApply(Select(Apply(TypeApply(path, _), List(Ident(Name(coll)))), Name("foreach")), _), List(Function(List(ValDef(_, Name(ident), _, _)), body)))
+        if path.is("scala.Predef.refArrayOps") => forStmt(ident, coll, body)
+      /*
+        val coll = Seq(1, 2)
+        for (ident <- coll) body
+      */
+      case Apply(TypeApply(Select(Apply(TypeApply(Select(path, Name(n)), _), List(Ident(Name(coll)))), Name("foreach")), _), List(Function(List(ValDef(_, Name(ident), _, _)), body)))
+        if path.is("org.jscala.package") && n.startsWith("implicit") => forStmt(ident, coll, body)
+      /*
+        forIn(ident, coll) body
+       */
+      case app@Apply(Apply(TypeApply(path, _), List(coll)), List(Function(List(ValDef(_, Name(ident), _, _)), body))) if path.is("org.jscala.package.forIn") =>
+        reify(JsForIn(JsIdent(c.literal(ident).splice), jsExprOrDie(coll).splice, jsStmtOrDie(body).splice))
+    }
+
+    def forStmt(ident: String, coll: String, body: Tree) = {
+      val idx = c.literal(ident + "Idx")
+      val seq = reify(JsIdent(c.literal(coll).splice))
+      val len = reify(JsSelect(seq.splice, "length"))
+      val init = reify(JsVarDef(List(idx.splice -> JsNum(0, false), c.literal(ident).splice -> JsAccess(seq.splice, JsIdent(idx.splice)))))
+      val check = reify(JsBinOp("<", JsIdent(idx.splice), len.splice))
+      val update = reify(JsBinOp("=", JsIdent(c.literal(ident).splice), JsAccess(JsIdent(c.literal(coll).splice), JsUnOp("++", JsIdent(idx.splice)))).stmt)
+      val forBody = jsStmtOrDie(body)
+      reify(JsFor(List(init.splice), check.splice, List(update.splice), forBody.splice))
     }
 
     lazy val jsArrayExpr: ToExpr[JsExpr] = {
@@ -319,13 +345,18 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) {
       case ValDef(_, name, _, rhs) =>
         val identifier = c.literal(name.decoded)
         if (jsTernaryExpr.isDefinedAt(rhs)) {
-          reify(JsVarDef(identifier.splice, jsTernaryExpr(rhs).splice))
+          val idents = listToExpr(List(reify(identifier.splice -> jsTernaryExpr(rhs).splice)))
+          reify(JsVarDef(idents.splice))
         } else {
           val funcs = Seq(jsIfExpr, jsMatchExpr).reduceLeft(_ orElse _) andThen { expr =>
-            reify(JsStmts(List(JsVarDef(identifier.splice, JsUnit), expr.splice)))
+            val ident = listToExpr(List(reify(identifier.splice -> JsUnit)))
+            reify(JsStmts(List(JsVarDef(ident.splice), expr.splice)))
           }
           val x = name -> rhs
-          funcs.applyOrElse(x, (t: (TermName, Tree)) => reify(JsVarDef(identifier.splice, jsExprOrDie(rhs).splice)))
+          funcs.applyOrElse(x, (t: (TermName, Tree)) => {
+            val ident = listToExpr(List(reify(identifier.splice -> jsExprOrDie(rhs).splice)))
+            reify(JsVarDef(ident.splice))
+          })
         }
 
     }

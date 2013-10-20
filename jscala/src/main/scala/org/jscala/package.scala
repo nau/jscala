@@ -63,7 +63,7 @@ package object jscala {
   implicit object floatJsSerializer extends JsSerializer[Float] { def apply(a: Float) = JsNum(a, true) }
   implicit object doubleJsSerializer extends JsSerializer[Double] { def apply(a: Double) = JsNum(a, true) }
   implicit object stringJsSerializer extends JsSerializer[String] { def apply(a: String) = JsString(a) }
-  implicit def arrJsSerializer[A](implicit ev: JsSerializer[A]): JsSerializer[Array[A]] = 
+  implicit def arrJsSerializer[A](implicit ev: JsSerializer[A]): JsSerializer[Array[A]] =
     new JsSerializer[Array[A]] { def apply(a: Array[A]) = JsArray(a.map(ev.apply).toList) }
   implicit object seqJsSerializer extends JsSerializer[collection.Seq[JsExpr]] { def apply(a: collection.Seq[JsExpr]) = JsArray(a.toList) }
   implicit object mapJsSerializer extends JsSerializer[collection.Map[String,JsExpr]] { def apply(a: collection.Map[String,JsExpr]) = JsAnonObjDecl(a.toList) }
@@ -71,6 +71,8 @@ package object jscala {
   implicit class ToJsExpr[A](a: A)(implicit ev: JsSerializer[A]) {
     def toJs: JsExpr = ev.apply(a)
   }
+
+  def varDef(ident: String, init: JsExpr = JsUnit) = JsVarDef(List(ident -> init))
 
   // Javascript top-level functions/constants
   val Infinity = Double.PositiveInfinity
@@ -94,27 +96,87 @@ package object jscala {
     System.out.println(x)
   }
 
+  /**
+   * Scala/JavaScript implementation of for..in
+   *
+   * {{{
+   *   val coll = Seq("a", "b")
+   *   forIn(coll)(ch => print(ch))
+   * }}}
+   * translates to
+   * var coll = ["a", "b"];
+   * for (var ch in coll) print(ch);
+   */
+  def forIn[A](coll: Seq[A])(f: Int => Unit) = {
+    var idx = 0
+    val len = coll.length
+    while (idx < len) {
+      f(idx)
+      idx += 1
+    }
+  }
+
+  /**
+   * Scala/JavaScript implementation of for..in
+   *
+   * {{{
+   *   val coll = Map("a" -> 1, "b" -> 2)
+   *   forIn(coll)(ch => print(ch))
+   * }}}
+   * translates to
+   * var coll = {"a": 1, "b": 2};
+   * for (var ch in coll) print(ch);
+   */
+  def forIn[A, B](map: Map[A, B])(f: A => Unit) = {
+    map.keysIterator.foreach(k => f(k))
+  }
+
+  /**
+   * Scala/JavaScript implementation of for..in
+   *
+   * {{{
+   *   val obj = new { val a = 1 }
+   *   forIn(obj)(ch => print(ch))
+   * }}}
+   * translates to
+   * var obj = {"a": 1};
+   * for (var ch in obj) print(ch);
+   * @note Doesn't work in Scala!
+   */
+  def forIn[A, B](obj: AnyRef)(f: String => Unit) = ???
+
   def inject(a: JsAst) = ???
   /**
-   * Injects a value into generated Javascript using Jsserializer
+   * Injects a value into generated JavaScript using JsSerializer
    */
   def inject[A](a: A)(implicit jss: JsSerializer[A]) = a
 
   /**
-   * Macro that generates Javascript AST representation of its argument
+   * Macro that generates JavaScript AST representation of its argument
    */
   def ajax[A, B](input: A)(server: A => B)(callback: B => Unit): JsAst = ???
 
   /**
-   * Macro that generates Javascript AST representation of its argument
+   * Macro that generates JavaScript AST representation of its argument
    */
   def javascript(expr: Any): JsAst = macro Macros.javascriptImpl
+  /**
+   * Macro that generates JavaScript String representation of its argument
+   */
+  def javascriptString(expr: Any): String = macro Macros.javascriptStringImpl
   def javascriptDebug(expr: Any): JsAst = macro Macros.javascriptDebugImpl
 
   object Macros {
     def javascriptImpl(c: Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
       val parser = new ScalaToJsConverter[c.type](c, debug = false)
       parser.convert(expr.tree)
+    }
+    def javascriptStringImpl(c: Context)(expr: c.Expr[Any]): c.Expr[String] = {
+      import c.universe._
+      val parser = new ScalaToJsConverter[c.type](c, debug = false)
+      val jsAst = parser.convert(expr.tree)
+      val strAst = reify { new JsAstOps(jsAst.splice).asString }
+      c.literal(c.eval(strAst))
     }
     def javascriptDebugImpl(c: Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
       val parser = new ScalaToJsConverter[c.type](c, debug = true)
