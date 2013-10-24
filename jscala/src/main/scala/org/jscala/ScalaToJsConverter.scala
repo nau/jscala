@@ -22,6 +22,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) {
   private lazy val jarraySym = c.mirror.staticClass("org.jscala.JArray")
   private lazy val seqSym = c.mirror.staticClass("scala.collection.Seq")
   private lazy val mapSym = c.mirror.staticClass("scala.collection.Map")
+  private lazy val functionTypes = List(typeOf[Function1[_,_]], typeOf[Function2[_, _,_]], typeOf[Function3[_,_,_,_]], typeOf[Function4[_,_,_,_,_]])
 
   implicit class TreeHelper(tree: Tree) {
     def is(p: String): Boolean = tree.equalsStructure(select(p)) || tree.equalsStructure(select(p, s => This(newTypeName(s))))
@@ -453,7 +454,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) {
         if (ctor.size != 1) c.abort(c.enclosingPosition, "Only single primary constructor is currently supported. Sorry.")
         val init = ctor.head.map(f => f -> reify(JsIdent(c.literal(f).splice)))
         val inherited = t.tpe.baseClasses.map(_.fullName).flatMap {bc => traits.get(bc).toList }
-//        val inherited = List[List[Tree]]()
+        //        val inherited = List[List[Tree]]()
         val bigBody = body ::: inherited.foldLeft(List[Tree]())(_ ::: _)
         val defs = bigBody.collect(objectFields)
         val fields = init ::: defs
@@ -533,6 +534,10 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) {
 
     lazy val jsAst: ToExpr[JsAst] = jsBlock orElse jsExpr orElse jsStmtOrDie
 
-    jsAst apply tree
+    val expr = jsAst apply tree
+
+    if (functionTypes.exists(tree.tpe.<:<)) {
+      c.Expr(q"${expr.tree}.asInstanceOf[${expr.staticType} with ${tree.tpe}]")
+    } else expr
   }
 }

@@ -37,7 +37,7 @@ case class JsArray(values: List[JsExpr]) extends JsLit
 case object JsUnit extends JsLit
 case object JsNull extends JsLit
 
-case class JsLazy(ast: () => JsAst) extends JsExpr
+case class JsLazy[A <: JsAst](ast: () => A) extends JsExpr
 case class JsIdent(ident: String) extends JsExpr
 case class JsRaw(js: String) extends JsExpr
 case class JsAccess(qualifier: JsExpr, key: JsExpr) extends JsExpr

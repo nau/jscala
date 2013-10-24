@@ -88,8 +88,8 @@ package object jscala {
   def eval(uri: String): AnyRef = null
   def isFinite(uri: AnyRef) = false
   def isNaN(uri: AnyRef) = false
-  def parseFloat(str: String) = 1.0
-  def parseInt(str: String) = 1
+  def parseFloat(str: String) = str.toDouble
+  def parseInt(str: String) = str.toInt
   def typeof(x: Any) = ""
   def include(js: String) = ""
   def print(x: Any) {

@@ -2,7 +2,7 @@ package org.jscala
 
 object JavascriptPrinter {
   private[this] val substitutions = Map("\\\"".r -> "\\\\\"", "\\n".r -> "\\\\n", "\\r".r -> "\\\\r", "\\t".r -> "\\\\t")
-  def simplify(ast: JsAst): JsAst = ast match {
+  private[this] def simplify(ast: JsAst): JsAst = ast match {
     case JsBlock(stmts) => JsBlock(stmts.filter(_ != JsExprStmt(JsUnit)))
     case JsCase(const, JsBlock(List(stmt))) => JsCase(const, stmt)
     case JsDefault(JsBlock(List(stmt))) => JsDefault(stmt)
@@ -44,6 +44,7 @@ object JavascriptPrinter {
       case JsBinOp(operator, lhs, rhs: JsBinOp) => s"${p(lhs)} $operator ${s(rhs)}"
       case JsBinOp(operator, lhs, rhs)          => s"${p(lhs)} $operator ${p(rhs)}"
       case JsNew(call)                          => s"new ${p(call)}"
+      case expr@JsCall(JsSelect(callee: JsLazy[_], "apply"), params) => s"""(${p(callee)})(${params.map(p(_)).mkString(", ")})"""
       case JsCall(JsSelect(callee: JsAnonFunDecl, "apply"), params) => s"""(${p(callee)})(${params.map(p(_)).mkString(", ")})"""
       case JsCall(callee, params)               => s"""${p(callee)}(${params.map(p(_)).mkString(", ")})"""
       case JsBlock(Nil)                         => "{}"

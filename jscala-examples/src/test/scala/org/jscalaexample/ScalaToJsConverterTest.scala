@@ -377,6 +377,24 @@ class ScalaToJsConverterTest extends FunSuite {
     assert(ast.eval() === "15hehemy11,2,3gen")
   }
 
+  test("() => JsAst injection") {
+    var t = 1
+    def handle: Int => Unit = (i: Int) => { t = i }
+    def ajax(f: Int => Unit) = {
+      f(2)
+      javascript { (y: Int) => y.toString() }
+    }
+
+    val js = javascript {
+      val x = 10
+      val s = ajax(handle)(x)
+      "JavaScript " + s
+    }
+    js.asString
+    assert(t === 2)
+    assert(js.eval() === "JavaScript 10")
+  }
+
   test("Implicit conversions") {
     val ast = javascript {
       val a: JString = "asdf"
@@ -385,7 +403,7 @@ class ScalaToJsConverterTest extends FunSuite {
       def f(s: String, b: Array[Int], c: Array[String]) = s
       f(a, b, c)
     }
-    assert(ast.eval() === "asdf")
+    assert(ast.eval() === "asdf" )
   }
 
   test("JsDynamic") {
