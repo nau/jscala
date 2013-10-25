@@ -344,16 +344,18 @@ class ScalaToJsConverterTest extends FunSuite {
     val ast = javascript {
       class A(val arg1: String, var arg2: Int, arg3: Array[String]) {
         val field = 1
-        private var count = arg2
+        var count = arg2
+        count = 5
         def func1(i: Int) = field
         def func2(i: Int) = arg3(i)
         def func3() = arg3
         def func4() = func3()(0)
+        def func5() = count
       }
       val a = new A("a", 1, Array("111", "222"))
-      a.arg1 + a.func2(a.arg2) + a.field + a.func4()
+      a.arg1 + a.func2(a.arg2) + a.field + a.func4() + a.func5()
     }
-    assert(ast.eval() === "a2221111")
+    assert(ast.eval() === "a22211115")
   }
 
   test("Lazy") {

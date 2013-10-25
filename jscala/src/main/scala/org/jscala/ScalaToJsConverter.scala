@@ -115,6 +115,15 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) {
 
     def tpe(t: Tree) = t.tpe.widen
 
+    def funParams(args: List[Tree]): Expr[List[JsExpr]] = {
+      val filteredDefaults = args collect {
+        case arg@Select(_, n) if n.decoded.contains("$default$") => None
+        case arg@Ident(n) if n.decoded.contains("$default$") => None
+        case arg => Some(jsExprOrDie(arg))
+      }
+      listToExpr(filteredDefaults.flatten)
+    }
+
     lazy val jsBinOp: ToExpr[JsBinOp] = {
       case Apply(Select(q, n), List(rhs)) if encodedBinOpsMap.contains(n) =>
         val op = encodedBinOpsMap(n)
@@ -216,8 +225,9 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) {
         reify(JsArray(params.splice))
       case Apply(Select(New(AppliedTypeTree(Ident(arr), _)), ctor), List(Literal(Constant(_)))) if ctor == nme.CONSTRUCTOR && arr == newTypeName("Array") =>
         reify(JsArray(Nil))
+      // new Array[Int](256)
       case Apply(Select(a@New(t@TypeTree()), ctor), List(Literal(Constant(_))))
-        if ctor == nme.CONSTRUCTOR && t.original.isInstanceOf[AppliedTypeTree] && t.original.asInstanceOf[AppliedTypeTree].tpt.equalsStructure(Select(Ident(newTermName("scala")), newTypeName("Array"))) =>
+        if ctor == nme.CONSTRUCTOR && t.original.isInstanceOf[AppliedTypeTree @unchecked] && t.original.asInstanceOf[AppliedTypeTree].tpt.equalsStructure(Select(Ident(newTermName("scala")), newTypeName("Array"))) =>
         reify(JsArray(Nil))
       case Apply(Select(a@New(t@TypeTree()), ctor), List(Literal(Constant(_)))) =>
         reify(JsArray(Nil))
@@ -250,7 +260,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) {
         val call = c.Expr[JsExpr](Apply(jss, List(ident)))
         reify(JsLazy(() => call.splice))
       case Apply(Select(path, fn), args) if path.is("org.jscala.package") =>
-        val params = listToExpr(args map jsExprOrDie)
+        val params = funParams(args)
         reify(JsCall(JsIdent(c.literal(fn.decoded).splice), params.splice))
     }
 
@@ -261,10 +271,10 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) {
 
     lazy val jsNewExpr: ToExpr[JsExpr] = {
       case Apply(Select(New(Ident(ident)), _), args) =>
-        val params = listToExpr(args map jsExprOrDie)
+        val params = funParams(args)
         reify(JsNew(JsCall(JsIdent(c.literal(ident.decoded).splice), params.splice)))
       case Apply(Select(New(path), _), args) =>
-        val params = listToExpr(args map jsExprOrDie)
+        val params = funParams(args)
         reify(JsNew(JsCall(jsExprOrDie(path).splice, params.splice)))
     }
 
@@ -284,21 +294,11 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) {
         val expr = c.Expr[JsAst](app)
         reify(JsLazy(() => expr.splice))
       case Apply(Select(p@Ident(_), Name(fun)), args) if p.symbol.isModule =>
-        val filteredDefaults = args collect {
-          case arg@Select(_, n) if n.decoded.contains("$default$") => None
-          case arg@Ident(n) if n.decoded.contains("$default$") => None
-          case arg => Some(jsExprOrDie(arg))
-        }
-        val params = listToExpr(filteredDefaults.flatten)
+        val params = funParams(args)
         reify(JsCall(JsIdent(c.literal(fun).splice), params.splice))
       case Apply(fun, args) =>
         val callee = jsExprOrDie apply fun
-        val filteredDefaults = args collect {
-          case arg@Select(_, n) if n.decoded.contains("$default$") => None
-          case arg@Ident(n) if n.decoded.contains("$default$") => None
-          case arg => Some(jsExprOrDie(arg))
-        }
-        val params = listToExpr(filteredDefaults.flatten)
+        val params = funParams(args)
         reify(JsCall(callee.splice, params.splice))
     }
 
@@ -448,19 +448,24 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) {
       case cd@ClassDef(_, clsName, _, t@Template(base, _, body)) =>
         val ctor = body.collect {
           case f@DefDef(mods, n, _, argss, _, Block(stats, _)) if n == nme.CONSTRUCTOR =>
-            val a = argss.headOption.map(vp => vp.map(v => v.name.decoded)).getOrElse(Nil)
+            val a = argss.flatten.map(v => v.name.decoded)
             a
         }
         if (ctor.size != 1) c.abort(c.enclosingPosition, "Only single primary constructor is currently supported. Sorry.")
         val init = ctor.head.map(f => f -> reify(JsIdent(c.literal(f).splice)))
         val inherited = t.tpe.baseClasses.map(_.fullName).flatMap {bc => traits.get(bc).toList }
-        //        val inherited = List[List[Tree]]()
-        val bigBody = body ::: inherited.foldLeft(List[Tree]())(_ ::: _)
+        val bigBody = inherited.foldRight(List[Tree]())(_ ::: _) ::: body
         val defs = bigBody.collect(objectFields)
         val fields = init ::: defs
         val fs = listToExpr(fields.map { case (n, v) => reify((c.literal(n).splice, v.splice)) })
         val args = listToExpr(ctor.head.map(arg => c.literal(arg)))
-        reify(JsObjDecl(c.literal(clsName.decoded).splice, args.splice, fs.splice))
+        val ctorBody = listToExpr(bigBody.collect {
+          case _: ValDef => None
+          case _: DefDef => None
+          case stmt => Some(stmt)
+        }.flatten.map(jsStmtOrDie))
+        val ctorFuncDecl = reify(JsFunDecl(c.literal(clsName.decoded).splice, args.splice, JsBlock(ctorBody.splice)))
+        reify(JsObjDecl(c.literal(clsName.decoded).splice, ctorFuncDecl.splice, fs.splice))
     }
 
     lazy val jsAnonObjDecl: ToExpr[JsAnonObjDecl] = {

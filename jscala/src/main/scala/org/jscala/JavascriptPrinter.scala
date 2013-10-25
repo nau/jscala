@@ -76,9 +76,9 @@ object JavascriptPrinter {
       case JsAnonFunDecl(params, body)          => s"""function (${params.mkString(", ")}) ${p3(body)}"""
       case JsAnonObjDecl(fields)                =>
         if (fields.isEmpty) "{}" else fields.map{ case (k, v) => ind(2) + s"""$k: ${p(v)}"""}.mkString(!<, ",\n", !>)
-      case JsObjDecl(name, params, fields)              =>
-        val fs = (for ((n, v) <- fields) yield ind(2) + s"this.$n = ${p(v)};").mkString("\n")
-        val body = fs
+      case JsObjDecl(name, JsFunDecl(_, params, JsBlock(stmts)), fields) =>
+        val fs = for ((n, v) <- fields) yield ind(2) + s"this.$n = ${p(v)};"
+        val body = fs ++ stmts.map(s => ind(2) + p(s)) mkString "\n"
         s"""function $name(${params.mkString(", ")}) {\n$body\n${ind()}}"""
       case JsReturn(jsExpr)                     => s"return ${p(jsExpr)}"
       case JsUnit                               => ""

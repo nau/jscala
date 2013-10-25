@@ -86,10 +86,10 @@ package object jscala {
   def escape(str: String): JString = null
   def unescape(str: String): JString = null
   def eval(str: String): AnyRef = null
-  def isFinite(x: AnyRef) = false
-  def isNaN(x: AnyRef) = false
+  def isFinite(x: Any) = false
+  def isNaN(x: Any) = false
   def parseFloat(str: String) = str.toDouble
-  def parseInt(str: String) = str.toInt
+  def parseInt(str: String, base: Int = 10) = java.lang.Integer.parseInt(str, base)
   def typeof(x: Any) = ""
   def include(js: String) = ""
   def print(x: Any) {
