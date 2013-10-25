@@ -83,11 +83,11 @@ package object jscala {
   def decodeURIComponent(uri: String): JString = null
   def encodeURI(uri: String): JString = null
   def encodeURIComponent(uri: String): JString = null
-  def escape(uri: String): JString = null
-  def unescape(uri: String): JString = null
-  def eval(uri: String): AnyRef = null
-  def isFinite(uri: AnyRef) = false
-  def isNaN(uri: AnyRef) = false
+  def escape(str: String): JString = null
+  def unescape(str: String): JString = null
+  def eval(str: String): AnyRef = null
+  def isFinite(x: AnyRef) = false
+  def isNaN(x: AnyRef) = false
   def parseFloat(str: String) = str.toDouble
   def parseInt(str: String) = str.toInt
   def typeof(x: Any) = ""

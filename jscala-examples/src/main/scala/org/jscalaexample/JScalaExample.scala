@@ -29,6 +29,8 @@ object JScalaExample {
     val js = javascript {
       window.setTimeout(() => {
         val r = new RegExp("d.*", "g")
+        class Point(val x: Int, val y: Int)
+        val point = new Point(1, 2)
         def func(i: String) = r.exec(i)
         val list = document.getElementById("myList2")
         val map = collection.mutable.Map[String, String]()
@@ -45,7 +47,7 @@ object JScalaExample {
           val links = Array("https://github.com/nau/scala")
           for (link <- links) {
             include("var raw = 'JavaScript'")
-            console.log(link + obj.func2(obj.field))
+            console.log(link + obj.func2(obj.field) + point.x)
           }
           window.location.href = links(0).replace("scala", "jscala")
         }
