@@ -6,93 +6,14 @@ import scala.reflect.macros.Context
 import scala.collection.generic.{SeqFactory, MapFactory}
 import scala.reflect.internal.Flags
 
-class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) {
+class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis[C] {
   import c.universe._
-  type PFT[A] = PartialFunction[Tree, A]
-  type ToExpr[A] = PFT[Expr[A]]
-
-  private val unaryOps = Seq("+", "-", "!")
-  private val encodedUnaryOpsMap = unaryOps.map(op => newTermName(s"unary_$op").encodedName -> op).toMap
-  private val binOps = Seq("*", "/", "%",  "+", "-", "<<", ">>", ">>>",
-    "<", ">", "<=", ">=",
-    "==", "!=", "&", "|", "^", "&&", "||")
-  private val encodedBinOpsMap = binOps.map(op => newTermName(op).encodedName -> op).toMap
-  private lazy val seqFactorySym = c.typeOf[SeqFactory[Seq]].typeSymbol
-  private lazy val mapFactorySym = c.typeOf[MapFactory[collection.Map]].typeSymbol
-  private lazy val jarraySym = c.mirror.staticClass("org.jscala.JArray")
-  private lazy val seqSym = c.mirror.staticClass("scala.collection.Seq")
-  private lazy val mapSym = c.mirror.staticClass("scala.collection.Map")
-  private lazy val functionTypes = List(typeOf[Function1[_,_]], typeOf[Function2[_, _,_]], typeOf[Function3[_,_,_,_]], typeOf[Function4[_,_,_,_,_]])
-
-  implicit class TreeHelper(tree: Tree) {
-    def is(p: String): Boolean = tree.equalsStructure(select(p)) || tree.equalsStructure(select(p, s => This(newTypeName(s))))
-    def raw: String = showRaw(tree)
-    def isNum = tree.tpe.widen.weak_<:<(typeOf[Long])
-  }
-
-  object Name {
-    def unapply(name: Name): Option[String] = Some(name.decoded)
-  }
-
-  private def select(p: String, init: String => Tree = s => Ident(newTermName(s))): Tree = {
-    p.split("\\.").foldLeft(EmptyTree) {
-      case (EmptyTree, el) => init(el)
-      case (t, el) => Select(t, newTermName(el))
-    }
-  }
-  private def isUnit(tree: Tree) = tree.equalsStructure(c.literalUnit.tree)
-  private def isNull(tree: Tree) = tree.equalsStructure(c.literalNull.tree)
-  private def isArray(path: c.Tree) =
-    path.tpe.typeSymbol == definitions.ArrayClass || path.tpe.typeSymbol == jarraySym || path.tpe.baseClasses.contains(seqSym)
-  private def listToExpr[T](exprs: List[Expr[T]]): Expr[List[T]] = c.Expr[List[T]](treeBuild.mkMethodCall(reify(List).tree, exprs.map(_.tree)))
-  private def mapToExpr[V](m: Map[String, Expr[V]]): Expr[Map[String, V]] = {
-    val args: List[Expr[(String, V)]] =  m.map { case (k, v) => reify(c.literal(k).splice -> v.splice) }.toList
-    val params =  args.map(_.tree)
-    c.Expr[Map[String, V]](treeBuild.mkMethodCall(reify(Map).tree, params))
-  }
-
-  private lazy val jsString: PFT[String] = {
-    case Literal(Constant(value: Char))  => value.toString
-    case Literal(Constant(value: String))  => value
-  }
-  private lazy val jsStringLit: ToExpr[JsString] = jsString.andThen(s => reify(JsString(c.literal(s).splice)))
-
-  private lazy val jsNumLit: ToExpr[JsNum] = {
-    case Literal(Constant(value: Byte))  => reify(JsNum(c.literal(value).splice, isFloat = false))
-    case Literal(Constant(value: Short))  => reify(JsNum(c.literal(value).splice, isFloat = false))
-    case Literal(Constant(value: Int))  => reify(JsNum(c.literal(value).splice, isFloat = false))
-    case Literal(Constant(value: Long))  => reify(JsNum(c.literal(value).splice, isFloat = false))
-    case Literal(Constant(value: Double))  => reify(JsNum(c.literal(value).splice, isFloat = true))
-  }
-  private lazy val jsBoolLit: ToExpr[JsBool] = {
-    case Literal(Constant(value: Boolean))  => reify(JsBool(c.literal(value).splice))
-  }
-  private object jsUnitLit extends PartialFunction[Tree, Expr[JsUnit.type]] {
-    def apply(v1: Tree) = reify(JsUnit)
-    def isDefinedAt(x: Tree) = isUnit(x)
-  }
-  private object jsNullLit extends PartialFunction[Tree, Expr[JsNull.type]] {
-    def apply(v1: Tree) = reify(JsNull)
-    def isDefinedAt(x: Tree) = isNull(x)
-  }
-
-  private val jsLit: ToExpr[JsLit] = {
-    jsStringLit orElse jsNumLit orElse jsBoolLit orElse jsNullLit orElse jsUnitLit
-  }
 
   private val traits = collection.mutable.HashMap[String, List[Tree]]()
 
   def convert(tree: Tree): c.Expr[JsAst] = {
     //      println((tree))
     if (debug) println(tree.raw)
-
-    lazy val jsThis: ToExpr[JsIdent] = {
-      case This(name) => reify(JsIdent("this"))
-    }
-
-    lazy val jsIdent: ToExpr[JsIdent] = {
-      case Ident(name) => reify(JsIdent(c.literal(name.decoded).splice))
-    }
 
     lazy val jsSelect: ToExpr[JsExpr] = {
       case Select(Select(Select(Ident(Name("org")), Name("jscala")), Name("package")), Name(name)) =>
@@ -108,12 +29,6 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) {
         val op = encodedUnaryOpsMap(n)
         reify(JsUnOp(c.literal(op).splice, jsExprOrDie(q).splice))
     }
-
-    def prn(t: Tree) {
-      println(s"Tpe: ${t.tpe}, S: ${t.symbol}, STS: " + (if (t.symbol ne null) t.symbol.typeSignature.toString else "null"))
-    }
-
-    def tpe(t: Tree) = t.tpe.widen
 
     def funParams(args: List[Tree]): Expr[List[JsExpr]] = {
       val filteredDefaults = args collect {
@@ -262,11 +177,6 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) {
       case Apply(Select(path, fn), args) if path.is("org.jscala.package") =>
         val params = funParams(args)
         reify(JsCall(JsIdent(c.literal(fn.decoded).splice), params.splice))
-    }
-
-    lazy val jsJStringExpr: ToExpr[JsExpr] = {
-      case Apply(Select(New(Select(Select(Ident(Name("org")), Name("jscala")), Name("JString"))), _), List(Literal(Constant(str: String)))) =>
-        reify(JsString(c.literal(str).splice))
     }
 
     lazy val jsNewExpr: ToExpr[JsExpr] = {
