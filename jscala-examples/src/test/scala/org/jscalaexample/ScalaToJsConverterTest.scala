@@ -112,6 +112,17 @@ class ScalaToJsConverterTest extends FunSuite {
     assert(ternaryAst.eval() === 6)
   }
 
+  test("Closures") {
+    val ast = js {
+      class A {
+      def foo(f: Int => String) = f(1)
+      foo(_.toString)
+      def bar(i: Int) = i.toString
+      foo(bar)
+      }
+    }
+  }
+
   test("Simple statements") {
     var a = 0
     val b = 1

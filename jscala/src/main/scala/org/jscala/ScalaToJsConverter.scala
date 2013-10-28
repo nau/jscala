@@ -34,6 +34,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       val filteredDefaults = args collect {
         case arg@Select(_, n) if n.decoded.contains("$default$") => None
         case arg@Ident(n) if n.decoded.contains("$default$") => None
+        case Typed(exp, _) => Some(jsExprOrDie(exp))
         case arg => Some(jsExprOrDie(arg))
       }
       listToExpr(filteredDefaults.flatten)
