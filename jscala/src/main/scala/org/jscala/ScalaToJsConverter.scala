@@ -81,12 +81,15 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     lazy val jsForStmt: ToExpr[JsStmt] = {
       /*
         for (index <- from until untilExpr) body
+        for (index <- from to untilExpr) body
       */
-      case Apply(TypeApply(Select(Apply(Select(Apply(fn, List(Literal(Constant(from: Int)))), Name("until")), List(untilExpr)), Name("foreach")), _),
+      case Apply(TypeApply(Select(Apply(Select(Apply(fn, List(Literal(Constant(from: Int)))), n@Name("until"|"to")), List(endExpr)), Name("foreach")), _),
       List(Function(List(ValDef(_, Name(index), _, _)), body))) if fn.is("scala.Predef.intWrapper") =>
         val forBody = jsStmtOrDie(body)
         val init = reify(varDef(c.literal(index).splice, JsNum(c.literal(from).splice, false)))
-        val check = reify(JsBinOp("<", JsIdent(c.literal(index).splice), jsExprOrDie(untilExpr).splice))
+        val check = if (n.decoded == "until")
+            reify(JsBinOp("<", JsIdent(c.literal(index).splice), jsExprOrDie(endExpr).splice))
+          else reify(JsBinOp("<=", JsIdent(c.literal(index).splice), jsExprOrDie(endExpr).splice))
         val update = reify(JsUnOp("++", JsIdent(c.literal(index).splice)).stmt)
         reify(JsFor(List(init.splice), check.splice, List(update.splice), forBody.splice))
       /*
@@ -404,8 +407,8 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       def isDefinedAt(x: Tree) = true
 
       def apply(v1: Tree) = {
-        val stack = if (debug) Seq("Raw tree:", tree.raw) ++ Thread.currentThread.getStackTrace mkString "\n" else ""
-        c.abort(tree.pos, s"$msg: $tree. $stack")
+        val stack = if (debug) Seq("Raw tree:", v1.raw) ++ Thread.currentThread.getStackTrace mkString "\n" else ""
+        c.abort(tree.pos, s"$msg: $v1. $stack")
       }
     }
 

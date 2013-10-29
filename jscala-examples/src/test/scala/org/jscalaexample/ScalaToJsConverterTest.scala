@@ -176,15 +176,18 @@ class ScalaToJsConverterTest extends FunSuite {
         console.log("a")
       }
     } } === JsFunDecl("func6",List("a"),func6Body).block)
-    val stmt = JsCall(JsSelect(JsIdent("console"), "log"), List(JsAccess(JsIdent("a"), JsIdent("i")))).stmt
-    val jsFor = JsFor(List(varDef("i", 0.toJs)), JsBinOp("<", JsIdent("i"), JsSelect(JsIdent("a"), "length")), List(JsUnOp("++", JsIdent("i")).stmt), stmt)
+  }
+
+  test("for to/until") {
     val ast = js {
       val a = Array(1, 2)
-      for (i <- 0 until a.length) {
-        console.log(a(i))
-      }
+      for (i <- 0 until a.length) print(a(i))
+      for (i <- 0 to a.length) print(a(i))
     }
-    assert(ast === JsBlock(List(varDef("a", JsArray(List(1.toJs, 2.toJs))), jsFor)))
+    val stmt = JsCall(JsIdent("print"), List(JsAccess(JsIdent("a"), JsIdent("i")))).stmt
+    val jsForUntil = JsFor(List(varDef("i", 0.toJs)), JsBinOp("<", JsIdent("i"), JsSelect(JsIdent("a"), "length")), List(JsUnOp("++", JsIdent("i")).stmt), stmt)
+    val jsForTo = JsFor(List(varDef("i", 0.toJs)), JsBinOp("<=", JsIdent("i"), JsSelect(JsIdent("a"), "length")), List(JsUnOp("++", JsIdent("i")).stmt), stmt)
+    assert(ast === JsBlock(List(varDef("a", JsArray(List(1.toJs, 2.toJs))), jsForUntil, jsForTo)))
   }
 
   test("for in") {
