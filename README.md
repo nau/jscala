@@ -3,6 +3,7 @@ JScala
 
 Scala macro that produces JavaScript from Scala code. Let it be type safe!
 
+[![Build Status](https://secure.travis-ci.org/nau/jscala.png)](http://travis-ci.org/nau/jscala)
 
 Supported Features:
 ===================
