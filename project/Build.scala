@@ -8,7 +8,7 @@ object BuildSettings {
   val buildSettings = Defaults.defaultSettings ++ Seq(
     organization := "org.jscala",
     version := "0.3-SNAPSHOT",
-    scalaVersion := "2.11.0-SNAPSHOT",
+    scalaVersion := "2.11.0-M7",
     resolvers += Resolver.sonatypeRepo("snapshots"),
     credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
     publishTo <<= version((v: String) => Some( if (v.trim endsWith "SNAPSHOT") ossSnapshots else ossStaging)),
@@ -16,7 +16,7 @@ object BuildSettings {
     publishArtifact in Test := false,
     pomIncludeRepository := (_ => false),
     pomExtra := extraPom,
-    addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.11.0-SNAPSHOT" % "2.0.0-SNAPSHOT"),
+    addCompilerPlugin("org.scala-lang.plugins" %% "macro-paradise" % "2.0.0-SNAPSHOT"),
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
@@ -80,8 +80,9 @@ object JScalaBuild extends Build {
     "jscala-annots",
     file("jscala-annots"),
     settings = buildSettings ++ Seq(
+      resolvers += Resolver.sonatypeRepo("releases"),
       libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _ % "provided"),
-      libraryDependencies += ("fr.apyx" %% "ts2scala-macros" % "0.2")
+      libraryDependencies += ("fr.apyx" %% "ts2scala-macros" % "0.2.1")
     )
   ) dependsOn(jscala)
 

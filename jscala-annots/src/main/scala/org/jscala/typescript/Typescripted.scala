@@ -9,7 +9,6 @@ import scala.annotation.StaticAnnotation
 import language.experimental.macros
 import language.implicitConversions
 import scala.reflect.macros.Context
-import com.apyx.scala.ts2scala.dialect.JScalaDialect
 import com.apyx.scala.ts2scala.macros._
 
 object TypescriptedMacro {
