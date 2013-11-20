@@ -8,7 +8,7 @@ object BuildSettings {
   val buildSettings = Defaults.defaultSettings ++ Seq(
     organization := "org.jscala",
     version := "0.3-SNAPSHOT",
-    scalaVersion := "2.10.3",
+    scalaVersion := "2.11.0-M7",
     resolvers += Resolver.sonatypeRepo("snapshots"),
     credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
     publishTo <<= version((v: String) => Some( if (v.trim endsWith "SNAPSHOT") ossSnapshots else ossStaging)),
@@ -16,7 +16,7 @@ object BuildSettings {
     publishArtifact in Test := false,
     pomIncludeRepository := (_ => false),
     pomExtra := extraPom,
-    addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.3" % "2.0.0-SNAPSHOT"),
+    addCompilerPlugin("org.scala-lang.plugins" %% "macro-paradise" % "2.0.0-SNAPSHOT"),
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
@@ -80,7 +80,9 @@ object JScalaBuild extends Build {
     "jscala-annots",
     file("jscala-annots"),
     settings = buildSettings ++ Seq(
-      libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _ % "provided")
+      resolvers += Resolver.sonatypeRepo("releases"),
+      libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _ % "provided"),
+      libraryDependencies += ("fr.apyx" %% "ts2scala-macros" % "0.2.1")
     )
   ) dependsOn(jscala)
 
@@ -89,7 +91,7 @@ object JScalaBuild extends Build {
     file("jscala-examples"),
     settings = buildSettings ++ Seq(
       tetrisTask,
-      libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "1.9.1" % "test")
+      libraryDependencies += "org.scalatest" % "scalatest_2.10" % "1.9.2" % "test"
     )
   ) dependsOn(jscalaAnnots)
 }
