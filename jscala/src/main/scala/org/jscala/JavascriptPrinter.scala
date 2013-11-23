@@ -12,7 +12,7 @@ object JavascriptPrinter {
   def print(ast: JsAst, indent: Int): String = {
     def ind(c: Int = 0) = " " * (indent + c)
     def p(ast: JsAst) = print(ast, indent)
-    def p2(ast: JsAst) = ind(2) + print(ast, indent + 2)
+    def p2(ast: JsAst) = ind(2) + p3(ast)
     def p3(ast: JsAst) = print(ast, indent + 2)
     def p4(ast: JsAst) = ind() + p(ast)
     def s(ast: JsAst) = ast match {
@@ -75,7 +75,7 @@ object JavascriptPrinter {
       case JsFunDecl(ident, params, body)       => s"""function $ident(${params.mkString(", ")}) ${p(body)}"""
       case JsAnonFunDecl(params, body)          => s"""function (${params.mkString(", ")}) ${p3(body)}"""
       case JsAnonObjDecl(fields)                =>
-        if (fields.isEmpty) "{}" else fields.map{ case (k, v) => ind(2) + s"""$k: ${p(v)}"""}.mkString(!<, ",\n", !>)
+        if (fields.isEmpty) "{}" else fields.map{ case (k, v) => ind(2) + s""""$k": ${p(v)}"""}.mkString(!<, ",\n", !>)
       case JsObjDecl(name, JsFunDecl(_, params, JsBlock(stmts)), fields) =>
         val fs = for ((n, v) <- fields) yield ind(2) + s"this.$n = ${p(v)};"
         val body = fs ++ stmts.map(s => ind(2) + p(s)) mkString "\n"

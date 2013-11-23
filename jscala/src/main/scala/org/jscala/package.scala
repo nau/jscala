@@ -166,6 +166,10 @@ package object jscala {
   def javascriptString(expr: Any): String = macro Macros.javascriptStringImpl
   def javascriptDebug(expr: Any): JsAst = macro Macros.javascriptDebugImpl
 
+  def toJson[A](expr: Any): JsAst = macro Macros.toJsonImpl
+  def toJson1[A]: JsExpr = macro Macros.toJsonImpl1[A]
+  def fromJson[A](s: String): A = macro Macros.fromJsonImpl[A]
+
   object Macros {
     def javascriptImpl(c: Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
       val parser = new ScalaToJsConverter[c.type](c, debug = false)
@@ -182,5 +186,21 @@ package object jscala {
       val parser = new ScalaToJsConverter[c.type](c, debug = true)
       parser.convert(expr.tree)
     }
+    def toJsonImpl(c: Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
+      val converter = new JsonConverter[c.type](c, debug = true)
+      converter.toJson(expr.tree)
+    }
+
+    def toJsonImpl1[A: c.WeakTypeTag](c: Context): c.Expr[JsExpr] = {
+      val converter = new JsonConverter[c.type](c, debug = true)
+      converter.toJson1(c.weakTypeOf[A])
+    }
+
+    def fromJsonImpl[A: c.WeakTypeTag](c: Context)(s: c.Expr[String]): c.Expr[A] = {
+      val converter = new JsonConverter[c.type](c, debug = true)
+      converter.fromJson[A](s)
+    }
   }
 }
+
+

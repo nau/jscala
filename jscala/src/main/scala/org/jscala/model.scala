@@ -4,6 +4,7 @@ package org.jscala
 sealed trait JsAst {
   def block: JsBlock
   def join(a: JsAst): JsAst
+  final def ++(a: JsAst): JsAst = join(a)
 }
 
 sealed trait JsStmt extends JsAst {

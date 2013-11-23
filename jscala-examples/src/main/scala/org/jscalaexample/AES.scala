@@ -12,7 +12,6 @@ object AesExample {
     println("Input data " + data.mkString(","))
     val key = Array(1, 1, 1, 1)
     val aes = new Aes(key)
-    aes.init()
     val encrypted = aes.crypt(data, false)
     println("Encrypted Scala " + encrypted.mkString(","))
     val decrypted = aes.crypt(encrypted, true)
@@ -21,24 +20,25 @@ object AesExample {
       val d = inject(data)
       val k = inject(key)
       val aes = new Aes(k)
-      aes.init()
       val encrypted = aes.crypt(d, false)
       print("Encrypted JS " + encrypted + "\n")
       val decrypted = aes.crypt(encrypted, true)
       print("Decrypted JS " + decrypted + "\n")
     }
-    val js = Aes.javaScript join main
+    val js = Aes.jscala.javascript ++ main
     js.eval()
   }
 }
 
-@JavaScript
+@Javascript(json = false)
 class Aes(val key: Array[Int]) {
   val encTable = Array(new Array[Int](256), new Array[Int](256), new Array[Int](256), new Array[Int](256), new Array[Int](256))
   val decTable = Array(new Array[Int](256), new Array[Int](256), new Array[Int](256), new Array[Int](256), new Array[Int](256))
   var keys = Array(new Array[Int](44), new Array[Int](44))
 
-  def precompute() {
+  init()
+
+  private def precompute() {
     val sbox = encTable(4)
     val sboxInv = decTable(4)
     val d = new Array[Int](256)
@@ -85,7 +85,7 @@ class Aes(val key: Array[Int]) {
     }
   }
 
-  def init() {
+  private def init() {
     precompute()
 
     var tmp = 0

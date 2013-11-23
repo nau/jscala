@@ -16,11 +16,42 @@ object JScalaExample {
     println(html)
   }
 
+  def hello() {
+    val ast = javascript {
+      def main(args: Array[String]) {
+        val language = if (args.length == 0) "EN" else args(0)
+        val res = language match {
+          case "EN" => "Hello!"
+          case "FR" => "Salut!"
+          case "IT" => "Ciao!"
+          case _ => "Soory, I can't greet you in " + language + " yet"
+        }
+        print(res)
+      }
+    }
+    println(ast.asString)
+  }
+
   def browserStuff() {
     val js = javascript {
       window.location.href = "http://jscala.org"
       window.open("https://github.com")
       history.back()
+    }
+    println(js.asString)
+  }
+
+  def shortExample() {
+    val scalaValue = "https://github.com/nau/jscala"
+    val $ = new JsDynamic {}
+    val js = javascript {
+      window.setTimeout(() => {
+        val links = Array("https://github.com/nau/scala")
+        include("var raw = 'JavaScript'")
+        for (link <- links) {
+          $("#id").append("<p>" + link + "</p>")
+        }
+      }, 1000)
     }
     println(js.asString)
   }
@@ -56,12 +87,24 @@ object JScalaExample {
     println(js.asString)
   }
 
+  def ajaxExample() {
+    val $ = new JsDynamic {}
+    def ajaxCall(pageId: Int) = javascript {
+      $.get("ajax/" + pageId, (data: String) => $("#someId").html(data))
+    }
+    def genAjaxCall(pageId: Int) = javascript {
+      ajaxCall(pageId)
+    }
 
+    println(genAjaxCall(123).asString)
+  }
 
   def main(args: Array[String]) {
-    domManipulations()
+/*    domManipulations()
     browserStuff()
-    complexExample()
+    complexExample()*/
+//    hello()
+    shortExample()
   }
 }
 
