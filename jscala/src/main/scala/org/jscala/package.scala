@@ -12,7 +12,7 @@ package object jscala {
   import scala.reflect.macros.Context
 
   private lazy val engine = {
-    val factory = new ScriptEngineManager()
+    val factory = new ScriptEngineManager(null)
     factory.getEngineByName("JavaScript")
   }
 

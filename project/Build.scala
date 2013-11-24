@@ -17,7 +17,6 @@ object BuildSettings {
     pomIncludeRepository := (_ => false),
     pomExtra := extraPom,
     addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.3" % "2.0.0-SNAPSHOT"),
-    javaHome := Some(file("/Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home")),
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
