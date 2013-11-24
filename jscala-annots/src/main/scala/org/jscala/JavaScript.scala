@@ -32,7 +32,7 @@ object MacroAnnotations {
             val jscalaObj = q"""object js {
               def json: JsExpr = org.jscala.toJson1[$name]
             }"""
-            jscalaObj :: body
+            body :+ jscalaObj
           } else body
           val cd1 = ClassDef(mods, name, tparams, Template(parents, sf, expanded))
           val companion = comp match {
