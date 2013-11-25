@@ -7,42 +7,42 @@ import org.jscala._
  * @author Alexander Nemish
  */
 
-  @Javascript(debug = true, json = true) class Role(val name: String)
-//  @Javascript class User(val name: String, val id: Int, val roles: Set[Role])
-
-
-object Role {
-
-}
+@Javascript(debug = false, json = true) class Role(val name: String)
+@Javascript class User(val name: String, val id: Int, val roles: Set[Role])
 
 
 class AnnotationTest extends FunSuite {
 
-  /*test("Class") {
-    @Javascript class Aes(val key: Array[Int]) {
-      val encTable = Array(new Array[Int](256), new Array[Int](256), new Array[Int](256), new Array[Int](256), new Array[Int](256))
-      def f1() = 15
-    }
-    object Aes {
-      def test = 3
-    }
-    val a = new Aes(Array(1, 1, 1, 1)) 
-//    println(Aes.javaScript.asString)
-  }*/
-
-  test("Json") {
-
-//    val user = new User(null, 2, Set(new Role("admin"), new Role("user")))
-//    val js = user.js.json
-//    println(js.asString)
-//    fromJson[User]("""{"name": "alex", "id": 123, "roles": [{"name": "user"}, {"name": "admin"}]}""")
-//    val u1 = User.jscala.fromJson(json)
-    val role = new Role("alex")
-//    val js = role.js.json
-//    println(js.asString)
-//    println(fromJson[Role](js.asString))
-
-//    assert(user === u1)
+  test("JSON Array") {
+    val js = toJson(Array(1, 2))
+    assert(js === JsArray(List(1.toJs, 2.toJs)))
+    val from = fromJson[Array[Int]](js.asString)
+    assert(from === Array(1, 2))
   }
 
+  test("JSON Map") {
+    val js = toJson(Map("1" -> 2, "3" -> 4))
+    assert(js === JsAnonObjDecl(List("1" -> 2.toJs, "3" -> 4.toJs)))
+    val from = fromJson[Map[String, Int]](js.asString)
+    assert(from === Map("1" -> 2, "3" -> 4))
+  }
+
+  test("JSON Object") {
+    class Test(val a: String, val b: Array[Map[String, Double]])
+    val test = new Test(null, Array(Map("1" -> 1.0), Map("two" -> 2.0)))
+    val json = toJson(test)
+    val test1 = fromJson[Test](json.asString)
+    assert(test.a === test1.a)
+    assert(test.b(0)("1") === test1.b(0)("1"))
+    assert(test.b(1)("two") === test1.b(1)("two"))
+  }
+
+  test("JSON Object Hierarchy") {
+    val user = new User("nau", 2, Set(new Role("admin"), new Role("user"), new Role(null)))
+    val js = user.js.json
+    val u1 = User.jscala.fromJson(js.asString)
+    assert (u1.name === user.name)
+    assert (u1.id === user.id)
+    assert(u1.roles.map(_.name) === user.roles.map(_.name))
+  }
 }

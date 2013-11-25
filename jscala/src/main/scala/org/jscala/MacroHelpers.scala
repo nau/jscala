@@ -31,6 +31,7 @@ trait MacroHelpers[C <: Context] {
   protected lazy val seqSym = c.mirror.staticClass("scala.collection.Seq")
   protected lazy val traversableSym = c.mirror.staticClass("scala.collection.Traversable")
   protected lazy val mapSym = c.mirror.staticClass("scala.collection.Map")
+  protected lazy val setSym = c.mirror.staticClass("scala.collection.Set")
   protected lazy val functionTypes = List(typeOf[Function1[_,_]], typeOf[Function2[_, _,_]], typeOf[Function3[_,_,_,_]], typeOf[Function4[_,_,_,_,_]])
 
 

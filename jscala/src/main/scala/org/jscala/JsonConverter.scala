@@ -5,99 +5,120 @@ import scala.reflect.macros.Context
 /**
  * @author Alexander Nemish
  */
-class JsonConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis[C] {
+class JsonConverter[C <: Context](val c: C, val debug: Boolean) extends JsBasis[C] {
   import c.universe._
-  def toJson(tree: Tree) = tree match {
-    case Block(cd@ClassDef(mods, name, _, tpl@Template(parents, _, body)) :: Nil, _) =>
-      println("AAAAAAAAAAAAAAAAAA\n")// + body.map(e => showRaw(e)).mkString("\n"))
-      val fs = fields(tpl.tpe)
-      val fds = fs collect {
-        case FieldIR(n, tp, p, Some(a)) if tp =:= typeOf[String] => q"""$n -> JsString(this.$a)"""
-
-      }
-//      val fds = List("asdf" -> "asdf").map { case (n, i) => q"""$n -> JsString($i)""" }
-      c.Expr(q"""JsAnonObjDecl(List(..$fds))""")
-//      reify(JsString("a"))
-    case _ => c.abort(c.enclosingPosition, s"toJson can't generate JSON for this tree: ${tree.raw}")
-  }
 
   private def isPrim(tp: Type) = {
     tp =:= typeOf[String] || tp =:= typeOf[Boolean] || (tp weak_<:< typeOf[Double])
   }
 
-  def toJson1(tpe: Type): c.Expr[JsExpr] = {
-    tpe.typeSymbol.typeSignature
-    println("BBBBBBBBBBBBBBB " + tpe)
-    println(showRaw(tpe))
+  private def isArray(tp: Type) = tp.typeSymbol == arraySym || tp.baseClasses.contains(traversableSym)
 
-
-
-    def primitive(tp: Type) = {
-      if (tp =:= typeOf[String]) q"""(a: $tp) => if (a ne null) JsString(a) else JsNull"""
-      else if (tp =:= typeOf[Boolean]) q"(a: $tp) => JsBoolean(a)"
-      else if (tp weak_<:< typeOf[Long]) q"""(a: $tp) => JsNum(a, false)"""
-      else if (tp weak_<:< typeOf[Double]) q"""(a: $tp) => JsNum(a, true)"""
-      else c.abort(c.enclosingPosition, s"$tp is not a primitive!")
-    }
-
-    def _toJson(tp: Type, a: Name): Tree = {
-      println("Type " + showRaw(tp) + ", annots: " + tp.typeSymbol.annotations)
-      if (isPrim(tp)) q"${primitive(tp)}($a)"
+  def toJson(ref: Tree, tpe: Type): c.Expr[JsExpr] = {
+    def _toJson(tp: Type, a: Tree): Tree = {
+      if (tp =:= typeOf[String]) q"""if ($a ne null) JsString($a) else JsNull"""
+      else if (tp =:= typeOf[Boolean]) q"JsBoolean($a)"
+      else if (tp weak_<:< typeOf[Long]) q"""JsNum($a, false)"""
+      else if (tp weak_<:< typeOf[Double]) q"""JsNum($a, true)"""
       else if (tp.baseClasses.contains(mapSym)) {
         val TypeRef(_, _, List(_, arg)) = tp
-        q"if ($a ne null) JsAnonObjDecl($a.map { case (k, v) => k -> ${_toJson(arg, newTermName("v"))}}.toList) else JsNull"
-      } else if (tp.baseClasses.contains(traversableSym)) {
+        q"if ($a ne null) JsAnonObjDecl($a.map { case (k, v) => k -> ${_toJson(arg, Ident(newTermName("v")))}}.toList) else JsNull"
+      } else if (isArray(tp)) {
         val TypeRef(_, _, List(arg)) = tp
-        q"""if ($a ne null) JsArray($a.map(n => ${_toJson(arg, newTermName("n"))}).toList) else JsNull"""
-      } else if (tp.typeSymbol == arraySym) {
-        val TypeRef(_, _, List(arg)) = tp
-        q"""if ($a ne null) JsArray($a.map(n => ${_toJson(arg, newTermName("n"))}).toList) else JsNull"""
-      } else
+        q"""if ($a ne null) JsArray($a.map(n => ${_toJson(arg, Ident(newTermName("n")))}).toList) else JsNull"""
+      } else {
+        // println(tp.typeSymbol.typeSignature.typeSymbol.annotations)
+        /*
+        I'd like to do something like this:
+        if (tp.typeSymbol.typeSignature.typeSymbol.annotations.map(_.fullName).contains("org.jscala.Javascript")
+          q"""if ($a ne null) $a.js.json else JsNull"""
+        else q"""if ($a ne null) ${_toJson(tp, a)} else JsNull"""
+         */
         q"""if ($a ne null) $a.js.json else JsNull"""
+      }
     }
 
-    val fs = fields(tpe)
-    val fds = fs collect {
-      case FieldIR(n, tp, p, Some(a)) =>
-        val s = _toJson(tp, a.name)
-        q"$n -> $s"
+    val tree = if (isPrim(tpe)) c.abort(c.enclosingPosition, s"Root JSON element can't be of primitive type $tpe")
+    else if (tpe.baseClasses.contains(mapSym) || isArray(tpe)) {
+      _toJson(tpe, ref)
+    } else {
+      val fs = fields(tpe)
+      val fds = fs collect {
+        case FieldIR(n, tp, p, Some(a)) =>
+          val s = _toJson(tp, q"$ref.$a")
+          q"$n -> $s"
+      }
+      q"""JsAnonObjDecl(List(..$fds))"""
     }
-    val r = c.Expr(q"""JsAnonObjDecl(List(..$fds))""")
-    println(r)
-    r
-    //      reify(JsString("a"))
+    if (debug) println(s"toJson for type $tpe:\n$tree")
+    c.Expr(tree)
   }
+
+  private val mapping = Map(
+    "scala.collection.immutable.Set" -> q"new scala.collection.immutable.HashSet()",
+    "scala.collection.immutable.Map" -> q"new scala.collection.immutable.HashMap()",
+    "scala.collection.immutable.Seq" -> q"new scala.collection.immutable.List()",
+    "scala.collection.mutable.Set" -> q"new scala.collection.mutable.HashSet()",
+    "scala.collection.mutable.Map" -> q"new scala.collection.mutable.HashMap()",
+    "scala.collection.mutable.Seq" -> q"new scala.collection.mutable.ArrayBuffer()"
+  )
 
   def fromJson[A: WeakTypeTag](s: c.Expr[String]): c.Expr[A] = {
 
-    def readField(nm: String, tp: Type) = {
-      val n = c.literal(nm)
-      q"""jsonType.asInstanceOf[JSONObject].obj($n).asInstanceOf[$tp]"""
+    def readField(jsonObj: Tree, tp: Type): Tree = {
+      if (tp =:= typeOf[String]) q"$jsonObj.asInstanceOf[String]"
+      else if (tp =:= typeOf[Byte]) q"$jsonObj.asInstanceOf[Double].toByte"
+      else if (tp =:= typeOf[Short]) q"$jsonObj.asInstanceOf[Double].toShort"
+      else if (tp =:= typeOf[Int]) q"$jsonObj.asInstanceOf[Double].toInt"
+      else if (tp =:= typeOf[Long]) q"$jsonObj.asInstanceOf[Double].toLong"
+      else if (tp =:= typeOf[Float]) q"$jsonObj.asInstanceOf[Double].toFloat"
+      else if (tp =:= typeOf[Double]) q"$jsonObj.asInstanceOf[Double]"
+        // check Map first, because it's also Traversable
+      else if (tp.baseClasses.contains(mapSym)) {
+        val TypeRef(_, _, List(key, arg)) = tp
+        val func = readField(Ident(newTermName("v")), arg)
+        val col = mapping.get(tp.typeSymbol.fullName).getOrElse(c.abort(c.enclosingPosition, s"Can't find mapping for type $tp"))
+        q"""$col ++ ($jsonObj.asInstanceOf[Map[String, Any]].map{case (k, v) => k -> $func})"""
+      } else if (isArray(tp)) {
+        val TypeRef(_, _, List(arg)) = tp
+        val func = readField(Ident(newTermName("e")), arg)
+        val tree = if (tp.typeSymbol == arraySym)
+          q"""scala.Array[$arg]($jsonObj.asInstanceOf[List[Any]].map(e => $func).toSeq:_*)"""
+        else if (tp.baseClasses.contains(traversableSym)) {
+          val col = mapping.get(tp.typeSymbol.fullName).getOrElse(c.abort(c.enclosingPosition, s"Can't find mapping for type $tp"))
+          q"""$col ++ ($jsonObj.asInstanceOf[List[Any]].map(e => $func))"""
+        } else c.abort(c.enclosingPosition, s"Unsupported collection type $tp")
+        tree
+      } else {
+        val fs = fields(tp)
+        val ctorFirs = fs.filter(_.param.isDefined)
+        val ctorSig = ctorFirs.map(fir => (fir.param.get: Symbol, fir.tpe)).toMap
+        val ctorArgs = {
+          if (ctorSig.isEmpty) List(List())
+          else {
+            val ctorSym = ctorSig.head._1.owner.asMethod
+            ctorSym.paramss.map(_.map(f => {
+              readField(q"$jsonObj.asInstanceOf[Map[String, Any]](${f.name.decoded})", ctorSig(f))
+            }))
+          }
+        }
+        val instantiation = q"new $tp(...$ctorArgs)"
+        if (debug) println(s"$jsonObj = $instantiation")
+        instantiation
+      }
     }
 
     val tpe = weakTypeOf[A]
-    val fs = fields(tpe)
-    val ctorFirs = fs.filter(_.param.isDefined)
-    val ctorSig = ctorFirs.map(fir => (fir.param.get: Symbol, fir.tpe)).toMap
-    val ctorArgs = {
-      if (ctorSig.isEmpty) List(List())
-      else {
-        val ctorSym = ctorSig.head._1.owner.asMethod
-        ctorSym.paramss.map(_.map(f => {
-          readField(f.name.decoded, ctorSig(f))
-        }))
-      }
-    }
-    val instantiation = q"new $tpe(...$ctorArgs)"
-    val r = c.Expr[A](q"""
+    val instantiation = readField(q"jsonType", tpe)
+    val tree = q"""
     import scala.util.parsing.json._
-    JSON.parseRaw($s) match {
+    JSON.parseFull($s) match {
       case None => sys.error("Can't parse JSON: " + $s)
       case Some(jsonType) => $instantiation
     }
-    """)
-    println(r)
-    r
+    """
+    if (debug) println(s"fromJson for type $tpe: \n$tree")
+    c.Expr[A](tree)
   }
 
   case class FieldIR(name: String, tpe: Type, param: Option[TermSymbol], accessor: Option[MethodSymbol]) {

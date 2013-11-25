@@ -72,6 +72,25 @@ package object jscala {
     def toJs: JsExpr = ev.apply(a)
   }
 
+  /**
+   * JavaScript variable definition.
+   *
+   * In JavaScript you can define multiple variable in single statement:
+   * {{{
+   *   var a=1, b, c="string"
+   * }}}
+   *
+   * JsVarDef case class represents above statements as List of ident -> init tuples.
+   * `varDef` creates a single variable definition with optional initialization:
+   * {{{
+   *   varDef("a")
+   * }}}
+   * translates to `JsVarDef(List("a" -> JsUnit))` and
+   * {{{
+   *   varDef("a", "string".toJs)
+   * }}}
+   * translates to `JsVarDef(List("a" -> JsString("string"))`
+   */
   def varDef(ident: String, init: JsExpr = JsUnit) = JsVarDef(List(ident -> init))
 
   // Javascript top-level functions/constants
@@ -166,8 +185,7 @@ package object jscala {
   def javascriptString(expr: Any): String = macro Macros.javascriptStringImpl
   def javascriptDebug(expr: Any): JsAst = macro Macros.javascriptDebugImpl
 
-  def toJson[A](expr: Any): JsAst = macro Macros.toJsonImpl
-  def toJson1[A]: JsExpr = macro Macros.toJsonImpl1[A]
+  def toJson[A](ref: A): JsExpr = macro Macros.toJsonImpl[A]
   def fromJson[A](s: String): A = macro Macros.fromJsonImpl[A]
 
   object Macros {
@@ -182,22 +200,19 @@ package object jscala {
       val strAst = reify { new JsAstOps(jsAst.splice).asString }
       c.literal(c.eval(strAst))
     }
+
     def javascriptDebugImpl(c: Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
       val parser = new ScalaToJsConverter[c.type](c, debug = true)
       parser.convert(expr.tree)
     }
-    def toJsonImpl(c: Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
-      val converter = new JsonConverter[c.type](c, debug = true)
-      converter.toJson(expr.tree)
-    }
 
-    def toJsonImpl1[A: c.WeakTypeTag](c: Context): c.Expr[JsExpr] = {
-      val converter = new JsonConverter[c.type](c, debug = true)
-      converter.toJson1(c.weakTypeOf[A])
+    def toJsonImpl[A: c.WeakTypeTag](c: Context)(ref: c.Expr[A]): c.Expr[JsExpr] = {
+      val converter = new JsonConverter[c.type](c, debug = false)
+      converter.toJson(ref.tree, c.weakTypeOf[A])
     }
 
     def fromJsonImpl[A: c.WeakTypeTag](c: Context)(s: c.Expr[String]): c.Expr[A] = {
-      val converter = new JsonConverter[c.type](c, debug = true)
+      val converter = new JsonConverter[c.type](c, debug = false)
       converter.fromJson[A](s)
     }
   }

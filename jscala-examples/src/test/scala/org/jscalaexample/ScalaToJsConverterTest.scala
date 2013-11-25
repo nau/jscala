@@ -354,6 +354,11 @@ class ScalaToJsConverterTest extends FunSuite {
     assert(ast2 === JsTry(1.toJs.stmt, Some(JsCatch(JsIdent("e"), 2.toJs.stmt)), Some(JsCall(JsIdent("print"), List(3.toJs)).stmt)))
   }
 
+  test("Throw") {
+    val ast = javascript(throw new IndexOutOfBoundsException())
+    assert(ast === JsThrow(JsNew(JsCall(JsSelect(JsSelect(JsIdent("scala"), "package"), "IndexOutOfBoundsException"), Nil))))
+  }
+
   test("Object declaration") {
     val ast = javascript {
       class A(val arg1: String, var arg2: Int, arg3: Array[String]) {

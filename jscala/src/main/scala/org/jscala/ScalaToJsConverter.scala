@@ -323,6 +323,10 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
         reify(JsTry(jsStmtOrDie(body).splice, ctch.splice, fin.splice))
     }
 
+    lazy val jsThrowExpr: ToExpr[JsThrow] = {
+      case Throw(expr) => reify(JsThrow(jsExprOrDie(expr).splice))
+    }
+
     def jsSwitchGen(expr: Tree, cases: List[CaseDef], f: Tree => Tree) = {
       val cs = cases collect {
         case CaseDef(const@Literal(Constant(_)), EmptyTree, body) => reify(JsCase(List(jsLit(const).splice), jsStmtOrDie(f(body)).splice))
@@ -427,6 +431,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       jsIdent,
       jsThis,
       jsAnonObjDecl,
+      jsThrowExpr,
       jsTernaryExpr
     ) reduceLeft( _ orElse _)
 

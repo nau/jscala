@@ -19,8 +19,11 @@ object MacroAnnotations {
 //        case (cd@ClassDef(mods, name, _, tpl@Template(parents, _, body))) :: Nil => inputs
 
         case (cd@ClassDef(mods, name, tparams, tpl@Template(parents, sf, body))) :: comp =>
+          val javascriptMacro = if (debug) newTermName("javascriptDebug") else newTermName("javascript")
+          /*val ccd = ClassDef(mods, name, List(), Template(parents, emptyValDef, body))
+          val jsDef = q"def javascript: JsAst = org.jscala.$javascriptMacro($ccd)" */
           val jsDef = DefDef(Modifiers(), newTermName("javascript"), List(), List(), Ident(newTypeName("JsAst")),
-            Apply(Select(Select(Ident(newTermName("org")), newTermName("jscala")), newTermName("javascript")), List(Block(
+            Apply(Select(Select(Ident(newTermName("org")), newTermName("jscala")), javascriptMacro), List(Block(
               List(ClassDef(mods, name, List(), Template(parents, emptyValDef, body))), Literal(Constant(()))))))
           /*println("Members of " + name)
           cd.symbol.typeSignature.declarations foreach println*/
@@ -30,7 +33,7 @@ object MacroAnnotations {
 //          val jscalaObj = q"object js {$jsonDef}"
           val expanded = if (json) {
             val jscalaObj = q"""object js {
-              def json: JsExpr = org.jscala.toJson1[$name]
+              def json: JsExpr = org.jscala.toJson[$name]($name.this)
             }"""
             body :+ jscalaObj
           } else body
@@ -60,7 +63,6 @@ object MacroAnnotations {
     var json = true
     c.macroApplication match {
       case Apply(Select(Apply(Select(New(Ident(js)), nme.CONSTRUCTOR), args), _), _) if js.decoded == "Javascript" =>
-        println(showRaw("ARGS " + args))
         args match {
           case List(Literal(Constant(js: Boolean))) => json = js
           case List(Literal(Constant(js: Boolean)), Literal(Constant(db: Boolean))) => json = js; dbg = db
@@ -71,7 +73,7 @@ object MacroAnnotations {
             case _ =>
           }
         }
-      case _ => println("MACRO " + showRaw(c.macroApplication))
+      case _ => c.warning(c.enclosingPosition, "Can't parse @Javascript annotation arguments")
     }
 
     new JavascriptAnnotation[c.type](c, json, dbg).transform(annottees:_*)
