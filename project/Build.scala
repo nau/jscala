@@ -9,6 +9,7 @@ object BuildSettings {
     organization := "org.jscala",
     version := "0.3-SNAPSHOT",
     scalaVersion := "2.10.3",
+    crossScalaVersions := Seq("2.10.3", "2.11.0-M7"),
     resolvers += Resolver.sonatypeRepo("snapshots"),
     credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
     publishTo <<= version((v: String) => Some( if (v.trim endsWith "SNAPSHOT") ossSnapshots else ossStaging)),
@@ -16,7 +17,7 @@ object BuildSettings {
     publishArtifact in Test := false,
     pomIncludeRepository := (_ => false),
     pomExtra := extraPom,
-    addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.3" % "2.0.0-SNAPSHOT"),
+    addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise" % "2.0.0-SNAPSHOT" cross CrossVersion.full),
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
@@ -72,6 +73,8 @@ object JScalaBuild extends Build {
     file("jscala"),
     settings = buildSettings ++ Seq(
       libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _ % "provided"),
+      libraryDependencies <++= (scalaVersion){ sv =>
+        if (sv.startsWith("2.11")) Seq("org.scala-lang" % "scala-parser-combinators" % "2.11.0-M4") else Seq()},
       libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
     )
   )
@@ -89,7 +92,12 @@ object JScalaBuild extends Build {
     file("jscala-examples"),
     settings = buildSettings ++ Seq(
       tetrisTask,
-      libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "1.9.1" % "test")
+      libraryDependencies <++= (scalaVersion){sv =>
+        if (sv.startsWith("2.11"))
+          Seq("org.scalatest" % "scalatest_2.11.0-M3" % "1.9.1" % "test")
+        else
+          Seq("org.scalatest" %% "scalatest" % "1.9.1" % "test")
+      }
     )
   ) dependsOn(jscalaAnnots)
 }
