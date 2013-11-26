@@ -9,7 +9,7 @@ object BuildSettings {
     organization := "org.jscala",
     version := "0.3-SNAPSHOT",
     scalaVersion := "2.10.3",
-    crossScalaVersions := Seq("2.10.3", "2.11.0-M7"),
+    crossScalaVersions := Seq("2.10.3", "2.11.0-M5"),
     resolvers += Resolver.sonatypeRepo("snapshots"),
     credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
     publishTo <<= version((v: String) => Some( if (v.trim endsWith "SNAPSHOT") ossSnapshots else ossStaging)),
@@ -92,9 +92,9 @@ object JScalaBuild extends Build {
     file("jscala-examples"),
     settings = buildSettings ++ Seq(
       tetrisTask,
-      libraryDependencies <++= (scalaVersion){sv =>
+      libraryDependencies <++= (scalaVersion){ sv =>
         if (sv.startsWith("2.11"))
-          Seq("org.scalatest" % "scalatest_2.11.0-M3" % "1.9.1" % "test")
+          Seq("org.scalatest" % "scalatest_2.11.0-M5" % "2.0.M7" % "test")
         else
           Seq("org.scalatest" %% "scalatest" % "1.9.1" % "test")
       }
