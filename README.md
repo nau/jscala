@@ -22,7 +22,8 @@ Supported Features:
 * Values and function call injections from your Scala code
 * Generated JavaScript eval using Java ScriptEngine
 * Pretty printing and compression using YUI compressor
-* Basic @JavaScript macro annotation support
+* Basic @Javascript macro annotation support
+* Basic toJson/fromJson macros
 
 Examples
 ========
@@ -101,13 +102,13 @@ How To Use
 
 In your build.sbt add
 
-    scalaVersion := "2.10.2"
+    scalaVersion := "2.10.3"
 
     libraryDependencies += "org.jscala" %% "jscala-macros" % "0.2"
     
 If you want to try the latest snapshot:
 
-    scalaVersion := "2.10.2"
+    scalaVersion := "2.10.3"
 
     resolvers += Resolver.sonatypeRepo("snapshots")
 
@@ -129,7 +130,7 @@ How To Try Macro Annotations
 ============================
 In your build.sbt add
 
-    scalaVersion := "2.10.2"
+    scalaVersion := "2.10.3"
 
     resolvers += Resolver.sonatypeRepo("snapshots")
     
@@ -143,21 +144,52 @@ In your code
 
 ```scala
 import org.jscala._
-@JavaScript class Test {
-  def hello() {
-    print("Hello")
+@Javascript class User(val name: String, val id: Int)
+@Javascript(json = false) class Greeter {
+  def hello(u: User) {
+    print("Hello, " + u.name + "\n")
   }
 }
 // Run on JVM
-(new Test()).hello() // prints "Hello"
-val testJs = Test.javaScript.as[JsStmt] // Get class Test JsAst
+val u1 = new User("Alex", 1)
+val greeter = new Greeter()
+greeter.hello(u1) // prints "Hello, Alex"
+val json = u1.js.json.asString
 val main = javascript {
-  val t = new Test()
-  t.hello()
-}
-val js = testJs join main // join class Test definition with main code
-js.eval() // prints "Hello" using Rhino
+    val u = new User("nau", 2)
+    val u1Json = eval("(" + inject(json) + ")").as[User] // read User from json string generated above
+    val t = new Greeter()
+    t.hello(u)
+    t.hello(u1Json)
+  }
+val js = User.jscala.javascript ++ Greeter.jscala.javascript ++ main // join classes definitions with main code
+js.eval() // run using Rhino
 println(js.asString) // prints resulting JavaScript
+```
+
+Run it and you'll get
+
+```javascript
+Hello, Alex
+
+Hello, nau
+Hello, Alex
+{
+  function User(name, id) {
+    this.name = name;
+    this.id = id;
+  };
+  function Greeter() {
+    this.hello = function (u) {
+      print(("Hello, " + u.name) + "\n");
+    };
+  };
+  var u = new User("nau", 2);
+  var u1Json = eval(("(" + "{\n  \"name\": \"Alex\",\n  \"id\": 1\n}") + ")");
+  var t = new Greeter();
+  t.hello(u);
+  t.hello(u1Json);
+}
 ```
 
 See AES example:
