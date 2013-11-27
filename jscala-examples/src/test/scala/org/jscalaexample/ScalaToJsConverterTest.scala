@@ -178,6 +178,10 @@ class ScalaToJsConverterTest extends FunSuite {
     } } === JsFunDecl("func6",List("a"),func6Body).block)
   }
 
+  test("Val access") {
+    assert(javascript("String".jstr.length) === JsSelect(JsString("String"), "length"))
+  }
+
   test("for to/until") {
     val ast = js {
       val a = Array(1, 2)

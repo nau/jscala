@@ -46,6 +46,9 @@ package object jscala {
   }
 
   implicit def implicitString2JString(s: String): JString = new JString(s)
+  implicit class implicitRichString(s: String) {
+    def jstr = new JString(s)
+  }
   implicit def implicitJString2String(s: JString): String = ""
   implicit def implicitArray2JArray[A](s: Array[A]): JArray[A] = ???
   implicit def implicitJArray2Array[A](s: JArray[A]): Array[A] = ???

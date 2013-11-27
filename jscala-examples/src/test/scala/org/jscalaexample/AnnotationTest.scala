@@ -7,8 +7,8 @@ import org.jscala._
  * @author Alexander Nemish
  */
 
-@Javascript(debug = false, json = true) class Role(val name: String)
-@Javascript class User(val name: String, val id: Int, val roles: Set[Role])
+@Javascript(debug = false, json = true) case class Role(name: String)
+@Javascript case class User(name: String, id: Int, roles: Set[Role])
 
 
 class AnnotationTest extends FunSuite {
@@ -41,8 +41,6 @@ class AnnotationTest extends FunSuite {
     val user = new User("nau", 2, Set(new Role("admin"), new Role("user"), new Role(null)))
     val js = user.js.json
     val u1 = User.jscala.fromJson(js.asString)
-    assert (u1.name === user.name)
-    assert (u1.id === user.id)
-    assert(u1.roles.map(_.name) === user.roles.map(_.name))
+    assert (u1 === user)
   }
 }

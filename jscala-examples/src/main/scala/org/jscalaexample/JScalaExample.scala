@@ -99,12 +99,37 @@ object JScalaExample {
     println(genAjaxCall(123).asString)
   }
 
+  def readmeExample() {
+    @Javascript class User(val name: String, val id: Int)
+    @Javascript(json = false) class Greeter {
+      def hello(u: User) {
+        print("Hello, " + u.name + "\n")
+      }
+    }
+    // Run on JVM
+    val u1 = new User("Alex", 1)
+    val greeter = new Greeter()
+    greeter.hello(u1) // prints "Hello, Alex"
+    val json = u1.js.json.asString
+    val main = javascript {
+        val u = new User("nau", 2)
+        val u1Json = eval("(" + inject(json) + ")").as[User] // read User from json string generated above
+        val t = new Greeter()
+        t.hello(u)
+        t.hello(u1Json)
+      }
+    val js = User.jscala.javascript ++ Greeter.jscala.javascript ++ main // join classes definitions with main code
+    js.eval() // run using Rhino
+    println(js.asString) // prints resulting JavaScript
+  }
+
   def main(args: Array[String]) {
 /*    domManipulations()
     browserStuff()
     complexExample()*/
 //    hello()
-    shortExample()
+//    shortExample()
+    readmeExample()
   }
 }
 

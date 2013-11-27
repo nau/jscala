@@ -12,25 +12,13 @@ object MacroAnnotations {
     import c.universe._
     def transform(annottees: c.Expr[Any]*): c.Expr[Any] = {
       val inputs = annottees.map(_.tree).toList
-//      println(inputs.raw)
-//      println(inputs.map(_.raw).mkString("\n"))
       val expandees = inputs match {
-//        case any => println(any); inputs
-//        case (cd@ClassDef(mods, name, _, tpl@Template(parents, _, body))) :: Nil => inputs
-
         case (cd@ClassDef(mods, name, tparams, tpl@Template(parents, sf, body))) :: comp =>
           val javascriptMacro = if (debug) newTermName("javascriptDebug") else newTermName("javascript")
-          /*val ccd = ClassDef(mods, name, List(), Template(parents, emptyValDef, body))
-          val jsDef = q"def javascript: JsAst = org.jscala.$javascriptMacro($ccd)" */
-          val jsDef = DefDef(Modifiers(), newTermName("javascript"), List(), List(), Ident(newTypeName("JsAst")),
+          val jsDef = if (mods hasFlag Flag.CASE) EmptyTree
+          else DefDef(Modifiers(), newTermName("javascript"), List(), List(), Ident(newTypeName("JsAst")),
             Apply(Select(Select(Ident(newTermName("org")), newTermName("jscala")), javascriptMacro), List(Block(
               List(ClassDef(mods, name, List(), Template(parents, emptyValDef, body))), Literal(Constant(()))))))
-          /*println("Members of " + name)
-          cd.symbol.typeSignature.declarations foreach println*/
-          /*val jsonDef = DefDef(Modifiers(), newTermName("json"), List(), List(), Ident(newTypeName("JsAst")),
-            Apply(Select(Select(Ident(newTermName("org")), newTermName("jscala")), newTermName("toJson")), List(Block(
-              List(ClassDef(mods, newTypeName(name.decoded + "$JScala"), List(), Template(parents, emptyValDef, body))), Literal(Constant(()))))))*/
-//          val jscalaObj = q"object js {$jsonDef}"
           val expanded = if (json) {
             val jscalaObj = q"""object js {
               def json: JsExpr = org.jscala.toJson[$name]($name.this)
@@ -50,7 +38,6 @@ object MacroAnnotations {
           List(cd1, companion)
         case _ => c.abort(c.enclosingPosition, "Javascript annotation is only supported on class/trait definitions")
       }
-      //    println(s"Annottee: $annottees")
       if (debug) println(s"Expandees: $expandees")
       c.Expr[Any](Block(expandees, Literal(Constant(()))))
     }

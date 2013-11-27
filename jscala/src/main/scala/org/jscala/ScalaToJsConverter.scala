@@ -162,6 +162,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     }
 
     lazy val jsGlobalFuncsExpr: ToExpr[JsExpr] = {
+      case Select(Apply(path, List(arg)), Name("jstr")) => reify(jsExprOrDie(arg).splice)
       case TypeApply(Select(Apply(jsAnyOps, List(expr)), Name("as")), _) if jsAnyOps.is("org.jscala.package.JsAnyOps") =>
         jsExprOrDie(expr)
       case Select(expr, Name("toDouble")) => jsExprOrDie(expr)
