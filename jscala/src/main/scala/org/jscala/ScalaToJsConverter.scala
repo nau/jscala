@@ -55,8 +55,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
 
     lazy val jsTupleExpr: PFT[(Tree, Tree)] = {
       case Apply(TypeApply(Select(Apply(TypeApply(path, _), List(lhs)), arrow), _), List(rhs))
-        if path.is("scala.Predef.any2ArrowAssoc") && (arrow.decoded == "->" || arrow.decoded == "→") =>
-        lhs -> rhs
+        if path.isArrow && arrow.isArrow => lhs -> rhs
       case Apply(TypeApply(path, _), List(lhs, rhs)) if path.is("scala.Tuple2.apply") => lhs -> rhs
     }
 

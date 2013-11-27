@@ -9,7 +9,7 @@ object BuildSettings {
     organization := "org.jscala",
     version := "0.3-SNAPSHOT",
     scalaVersion := "2.10.3",
-    crossScalaVersions := Seq("2.10.3", "2.11.0-M5"),
+    crossScalaVersions := Seq("2.10.3", "2.11.0-M7"),
     resolvers += Resolver.sonatypeRepo("snapshots"),
     credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
     publishTo <<= version((v: String) => Some( if (v.trim endsWith "SNAPSHOT") ossSnapshots else ossStaging)),

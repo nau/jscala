@@ -205,7 +205,8 @@ class ScalaToJsConverterTest extends FunSuite {
       forIn(c) { i => print(i) }
       forIn(d) { i => print(i) }
     }
-    assert(js === JsBlock(List(
+    /// FIXME: use === instead when scalatest for 2.11 is ready
+    assert(js == JsBlock(List(
       JsVarDef(List(("a", JsArray(List(1.toJs, 2.toJs))))),
       JsVarDef(List(("b", JsArray(List("1".toJs, "2".toJs))))),
       JsVarDef(List(("c", JsAnonObjDecl(List("1" -> 1.toJs, "2" -> 2.toJs))))),
@@ -360,7 +361,8 @@ class ScalaToJsConverterTest extends FunSuite {
 
   test("Throw") {
     val ast = javascript(throw new IndexOutOfBoundsException())
-    assert(ast === JsThrow(JsNew(JsCall(JsSelect(JsSelect(JsIdent("scala"), "package"), "IndexOutOfBoundsException"), Nil))))
+    /// FIXME: use === instead when scalatest for 2.11 is ready
+    assert(ast == JsThrow(JsNew(JsCall(JsSelect(JsSelect(JsIdent("scala"), "package"), "IndexOutOfBoundsException"), Nil))))
   }
 
   test("Object declaration") {

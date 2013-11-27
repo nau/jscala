@@ -16,8 +16,13 @@ trait MacroHelpers[C <: Context] {
 
   implicit class TreeHelper(tree: Tree) {
     def is(p: String): Boolean = tree.equalsStructure(select(p)) || tree.equalsStructure(select(p, s => This(newTypeName(s))))
+    lazy val isArrow: Boolean = is("scala.Predef.any2ArrowAssoc") /*2.10.x*/ || is("scala.Predef.ArrowAssoc") /*2.11.x*/
     def raw: String = showRaw(tree)
     def isNum = tree.tpe.widen.weak_<:<(typeOf[Long])
+  }
+
+  implicit class NameHelper(name: Name) {
+    def isArrow: Boolean = name.decoded == "->" || name.decoded == "→"
   }
 
   object Name {
