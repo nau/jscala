@@ -36,6 +36,8 @@
 
 <p>Scala macro that produces JavaScript from Scala code. Let it be type safe!</p>
 
+<p><a href="http://travis-ci.org/nau/jscala"><img src="https://secure.travis-ci.org/nau/jscala.png" alt="Build Status"></a></p>
+
 <h1>
 <a name="supported-features" class="anchor" href="#supported-features"><span class="octicon octicon-link"></span></a>Supported Features:</h1>
 
@@ -55,7 +57,9 @@
 <li>Values and function call injections from your Scala code</li>
 <li>Generated JavaScript eval using Java ScriptEngine</li>
 <li>Pretty printing and compression using YUI compressor</li>
-<li>Basic <a href="https://github.com/JavaScript" class="user-mention">@JavaScript</a> macro annotation support</li>
+<li>Basic <a href="https://github.com/Javascript" class="user-mention">@Javascript</a> macro annotation support</li>
+<li>Basic toJson/fromJson macros</li>
+<li>@Typescripted annotation</li>
 </ul><h1>
 <a name="examples" class="anchor" href="#examples"><span class="octicon octicon-link"></span></a>Examples</h1>
 
@@ -73,7 +77,7 @@
     <span class="k">if</span> <span class="o">(</span><span class="n">typeof</span><span class="o">(</span><span class="n">map</span><span class="o">)</span> <span class="o">==</span> <span class="s">"string"</span><span class="o">)</span> <span class="o">{</span>
       <span class="k">for</span> <span class="o">(</span><span class="n">idx</span> <span class="k">&lt;-</span> <span class="mi">0</span> <span class="n">until</span> <span class="n">list</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">length</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">val</span> <span class="n">attr</span> <span class="k">=</span> <span class="n">list</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">item</span><span class="o">(</span><span class="n">idx</span><span class="o">).</span><span class="n">asInstanceOf</span><span class="o">[</span><span class="kt">Attribute</span><span class="o">]</span>
-        <span class="n">map</span><span class="o">(</span><span class="n">attr</span><span class="o">.</span><span class="n">name</span><span class="o">)</span> <span class="k">=</span> <span class="n">func</span><span class="o">(</span><span class="n">attr</span><span class="o">.</span><span class="n">textContent</span><span class="o">).</span><span class="n">asInstanceOf</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
+        <span class="n">map</span><span class="o">(</span><span class="n">attr</span><span class="o">.</span><span class="n">name</span><span class="o">)</span> <span class="k">=</span> <span class="n">func</span><span class="o">(</span><span class="n">attr</span><span class="o">.</span><span class="n">textContent</span><span class="o">).</span><span class="n">as</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
       <span class="o">}</span>
     <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
       <span class="k">val</span> <span class="n">obj</span> <span class="k">=</span> <span class="k">new</span> <span class="o">{</span>
@@ -131,18 +135,18 @@
 
 <p>In your build.sbt add</p>
 
-<pre><code>scalaVersion := "2.10.2"
+<pre><code>scalaVersion := "2.10.3"
 
-libraryDependencies += "org.jscala" %% "jscala-macros" % "0.2"
+libraryDependencies += "org.jscala" %% "jscala-macros" % "0.3"
 </code></pre>
 
 <p>If you want to try the latest snapshot:</p>
 
-<pre><code>scalaVersion := "2.10.2"
+<pre><code>scalaVersion := "2.10.3"
 
 resolvers += Resolver.sonatypeRepo("snapshots")
 
-libraryDependencies += "org.jscala" %% "jscala-macros" % "0.3-SNAPSHOT"
+libraryDependencies += "org.jscala" %% "jscala-macros" % "0.4-SNAPSHOT"
 </code></pre>
 
 <p>In your code</p>
@@ -161,35 +165,65 @@ libraryDependencies += "org.jscala" %% "jscala-macros" % "0.3-SNAPSHOT"
 
 <p>In your build.sbt add</p>
 
-<pre><code>scalaVersion := "2.10.2"
+<pre><code>scalaVersion := "2.10.3"
 
 resolvers += Resolver.sonatypeRepo("snapshots")
 
 addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.3-RC2" % "2.0.0-SNAPSHOT")
 
-libraryDependencies += "org.jscala" %% "jscala-macros" % "0.3-SNAPSHOT"
+libraryDependencies += "org.jscala" %% "jscala-macros" % "0.3"
 
-libraryDependencies += "org.jscala" %% "jscala-annots" % "0.3-SNAPSHOT"
+libraryDependencies += "org.jscala" %% "jscala-annots" % "0.3"
 </code></pre>
 
 <p>In your code</p>
 
 <div class="highlight highlight-scala"><pre><span class="k">import</span> <span class="nn">org.jscala._</span>
-<span class="nd">@JavaScript</span> <span class="k">class</span> <span class="nc">Test</span> <span class="o">{</span>
-  <span class="k">def</span> <span class="n">hello</span><span class="o">()</span> <span class="o">{</span>
-    <span class="n">print</span><span class="o">(</span><span class="s">"Hello"</span><span class="o">)</span>
+<span class="nd">@Javascript</span> <span class="k">class</span> <span class="nc">User</span><span class="o">(</span><span class="k">val</span> <span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="k">val</span> <span class="n">id</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span>
+<span class="nd">@Javascript</span><span class="o">(</span><span class="n">json</span> <span class="k">=</span> <span class="kc">false</span><span class="o">)</span> <span class="k">class</span> <span class="nc">Greeter</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">hello</span><span class="o">(</span><span class="n">u</span><span class="k">:</span> <span class="kt">User</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">print</span><span class="o">(</span><span class="s">"Hello, "</span> <span class="o">+</span> <span class="n">u</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s">"\n"</span><span class="o">)</span>
   <span class="o">}</span>
 <span class="o">}</span>
 <span class="c1">// Run on JVM</span>
-<span class="o">(</span><span class="k">new</span> <span class="nc">Test</span><span class="o">()).</span><span class="n">hello</span><span class="o">()</span> <span class="c1">// prints "Hello"</span>
-<span class="k">val</span> <span class="n">testJs</span> <span class="k">=</span> <span class="nc">Test</span><span class="o">.</span><span class="n">javaScript</span><span class="o">.</span><span class="n">as</span><span class="o">[</span><span class="kt">JsStmt</span><span class="o">]</span> <span class="c1">// Get class Test JsAst</span>
+<span class="k">val</span> <span class="n">u1</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">User</span><span class="o">(</span><span class="s">"Alex"</span><span class="o">,</span> <span class="mi">1</span><span class="o">)</span>
+<span class="k">val</span> <span class="n">greeter</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Greeter</span><span class="o">()</span>
+<span class="n">greeter</span><span class="o">.</span><span class="n">hello</span><span class="o">(</span><span class="n">u1</span><span class="o">)</span> <span class="c1">// prints "Hello, Alex"</span>
+<span class="k">val</span> <span class="n">json</span> <span class="k">=</span> <span class="n">u1</span><span class="o">.</span><span class="n">js</span><span class="o">.</span><span class="n">json</span><span class="o">.</span><span class="n">asString</span>
 <span class="k">val</span> <span class="n">main</span> <span class="k">=</span> <span class="n">javascript</span> <span class="o">{</span>
-  <span class="k">val</span> <span class="n">t</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Test</span><span class="o">()</span>
-  <span class="n">t</span><span class="o">.</span><span class="n">hello</span><span class="o">()</span>
-<span class="o">}</span>
-<span class="k">val</span> <span class="n">js</span> <span class="k">=</span> <span class="n">testJs</span> <span class="n">join</span> <span class="n">main</span> <span class="c1">// join class Test definition with main code</span>
-<span class="n">js</span><span class="o">.</span><span class="n">eval</span><span class="o">()</span> <span class="c1">// prints "Hello" using Rhino</span>
+    <span class="k">val</span> <span class="n">u</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">User</span><span class="o">(</span><span class="s">"nau"</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+    <span class="k">val</span> <span class="n">u1Json</span> <span class="k">=</span> <span class="n">eval</span><span class="o">(</span><span class="s">"("</span> <span class="o">+</span> <span class="n">inject</span><span class="o">(</span><span class="n">json</span><span class="o">)</span> <span class="o">+</span> <span class="s">")"</span><span class="o">).</span><span class="n">as</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="c1">// read User from json string generated above</span>
+    <span class="k">val</span> <span class="n">t</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Greeter</span><span class="o">()</span>
+    <span class="n">t</span><span class="o">.</span><span class="n">hello</span><span class="o">(</span><span class="n">u</span><span class="o">)</span>
+    <span class="n">t</span><span class="o">.</span><span class="n">hello</span><span class="o">(</span><span class="n">u1Json</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="k">val</span> <span class="n">js</span> <span class="k">=</span> <span class="nc">User</span><span class="o">.</span><span class="n">jscala</span><span class="o">.</span><span class="n">javascript</span> <span class="o">++</span> <span class="nc">Greeter</span><span class="o">.</span><span class="n">jscala</span><span class="o">.</span><span class="n">javascript</span> <span class="o">++</span> <span class="n">main</span> <span class="c1">// join classes definitions with main code</span>
+<span class="n">js</span><span class="o">.</span><span class="n">eval</span><span class="o">()</span> <span class="c1">// run using Rhino</span>
 <span class="n">println</span><span class="o">(</span><span class="n">js</span><span class="o">.</span><span class="n">asString</span><span class="o">)</span> <span class="c1">// prints resulting JavaScript</span>
+</pre></div>
+
+<p>Run it and you'll get</p>
+
+<div class="highlight highlight-javascript"><pre><span class="nx">Hello</span><span class="p">,</span> <span class="nx">Alex</span>
+
+<span class="nx">Hello</span><span class="p">,</span> <span class="nx">nau</span>
+<span class="nx">Hello</span><span class="p">,</span> <span class="nx">Alex</span>
+<span class="p">{</span>
+  <span class="kd">function</span> <span class="nx">User</span><span class="p">(</span><span class="nx">name</span><span class="p">,</span> <span class="nx">id</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">this</span><span class="p">.</span><span class="nx">name</span> <span class="o">=</span> <span class="nx">name</span><span class="p">;</span>
+    <span class="k">this</span><span class="p">.</span><span class="nx">id</span> <span class="o">=</span> <span class="nx">id</span><span class="p">;</span>
+  <span class="p">};</span>
+  <span class="kd">function</span> <span class="nx">Greeter</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">this</span><span class="p">.</span><span class="nx">hello</span> <span class="o">=</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">u</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">print</span><span class="p">((</span><span class="s2">"Hello, "</span> <span class="o">+</span> <span class="nx">u</span><span class="p">.</span><span class="nx">name</span><span class="p">)</span> <span class="o">+</span> <span class="s2">"\n"</span><span class="p">);</span>
+    <span class="p">};</span>
+  <span class="p">};</span>
+  <span class="kd">var</span> <span class="nx">u</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">User</span><span class="p">(</span><span class="s2">"nau"</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
+  <span class="kd">var</span> <span class="nx">u1Json</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">((</span><span class="s2">"("</span> <span class="o">+</span> <span class="s2">"{\n  \"name\": \"Alex\",\n  \"id\": 1\n}"</span><span class="p">)</span> <span class="o">+</span> <span class="s2">")"</span><span class="p">);</span>
+  <span class="kd">var</span> <span class="nx">t</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Greeter</span><span class="p">();</span>
+  <span class="nx">t</span><span class="p">.</span><span class="nx">hello</span><span class="p">(</span><span class="nx">u</span><span class="p">);</span>
+  <span class="nx">t</span><span class="p">.</span><span class="nx">hello</span><span class="p">(</span><span class="nx">u1Json</span><span class="p">);</span>
+<span class="p">}</span>
 </pre></div>
 
 <p>See AES example:</p>
@@ -214,7 +248,7 @@ Tetris is fully written in Scala and translates to JavaScript mostly literally. 
 <a name="planned-features" class="anchor" href="#planned-features"><span class="octicon octicon-link"></span></a>Planned Features</h1>
 
 <ul>
-<li>JavaScript frameworks support: jQuery, Angular.js etc</li>
+<li>Language support improvements</li>
 <li>Web frameworks support: Play, Lift</li>
 </ul><h1>
 <a name="feedback" class="anchor" href="#feedback"><span class="octicon octicon-link"></span></a>Feedback</h1>
@@ -230,7 +264,7 @@ Tetris is fully written in Scala and translates to JavaScript mostly literally. 
     <!-- FOOTER  -->
     <div id="footer_wrap" class="outer">
       <footer class="inner">
-        <p class="copyright">JScala maintained by <a href="https://github.com/nau">Alexander Nemish</a></p>
+        <p class="copyright">JScala maintained by <a href="https://github.com/nau">nau</a></p>
         <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
       </footer>
     </div>
