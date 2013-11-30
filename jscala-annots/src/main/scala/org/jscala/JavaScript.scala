@@ -14,10 +14,10 @@ object MacroAnnotations {
       val inputs = annottees.map(_.tree).toList
       val expandees = inputs match {
         case (cd@ClassDef(mods, name, tparams, tpl@Template(parents, sf, body))) :: comp =>
-          val javascriptMacro = if (debug) newTermName("javascriptDebug") else newTermName("javascript")
+          val javascriptMacro = if (debug) TermName("javascriptDebug") else TermName("javascript")
           val jsDef = if (mods hasFlag Flag.CASE) EmptyTree
-          else DefDef(Modifiers(), newTermName("javascript"), List(), List(), Ident(newTypeName("JsAst")),
-            Apply(Select(Select(Ident(newTermName("org")), newTermName("jscala")), javascriptMacro), List(Block(
+          else DefDef(Modifiers(), TermName("javascript"), List(), List(), Ident(TypeName("JsAst")),
+            Apply(Select(Select(Ident(TermName("org")), TermName("jscala")), javascriptMacro), List(Block(
               List(ClassDef(mods, name, List(), Template(parents, emptyValDef, body))), Literal(Constant(()))))))
           val expanded = if (json) {
             val jscalaObj = q"""object js {

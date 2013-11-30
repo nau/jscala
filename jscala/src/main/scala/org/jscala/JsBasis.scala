@@ -12,11 +12,11 @@ trait JsBasis[C <: Context] extends MacroHelpers[C] {
   import c.universe._
 
   protected val unaryOps = Seq("+", "-", "!")
-  protected val encodedUnaryOpsMap = unaryOps.map(op => newTermName(s"unary_$op").encodedName -> op).toMap
+  protected val encodedUnaryOpsMap = unaryOps.map(op => TermName(s"unary_$op").encodedName -> op).toMap
   protected val binOps = Seq("*", "/", "%",  "+", "-", "<<", ">>", ">>>",
     "<", ">", "<=", ">=",
     "==", "!=", "&", "|", "^", "&&", "||")
-  protected val encodedBinOpsMap = binOps.map(op => newTermName(op).encodedName -> op).toMap
+  protected val encodedBinOpsMap = binOps.map(op => TermName(op).encodedName -> op).toMap
 
   protected lazy val jsString: PFT[String] = {
     case Literal(Constant(value: Char))  => value.toString

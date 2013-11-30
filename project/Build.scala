@@ -83,7 +83,17 @@ object JScalaBuild extends Build {
     "jscala-annots",
     file("jscala-annots"),
     settings = buildSettings ++ Seq(
-      libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _ % "provided")
+      libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _ % "provided"),
+      libraryDependencies <++= (scalaVersion){ sv =>
+        if (sv.startsWith("2.11")) Seq("fr.apyx" %% "ts2scala-macros" % "0.2.1") else Seq()
+      },
+      sources in Compile <<= (sources in Compile, scalaVersion, baseDirectory) map { (ss, sv, bd) =>
+        if (sv.startsWith("2.11")) ss
+        else ss.filter { (f: java.io.File) =>
+          val path = (bd / "src/main/scala/org/jscala/typescript").getCanonicalPath
+          !f.getCanonicalPath.startsWith(path)
+        }
+      }
     )
   ) dependsOn(jscala)
 
@@ -97,7 +107,10 @@ object JScalaBuild extends Build {
           Seq("org.scalatest" % "scalatest_2.11.0-M5" % "2.0.M7" % "test")
         else
           Seq("org.scalatest" %% "scalatest" % "1.9.1" % "test")
-      }
+      },
+      sources in Test <<= (sources in Test, scalaVersion) map { (ss, sv) =>
+        if (sv.startsWith("2.11")) ss
+        else ss.filter { (f: java.io.File) => !f.getCanonicalPath.endsWith("TypescriptedTest.scala") } }
     )
   ) dependsOn(jscalaAnnots)
 }

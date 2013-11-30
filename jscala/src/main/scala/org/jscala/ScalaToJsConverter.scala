@@ -20,6 +20,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
         reify(JsIdent(c.literal(name).splice))
       case Select(Select(Ident(Name("org")), Name("jscala")), Name(name)) =>
         reify(JsIdent(c.literal(name).splice))
+      case s@Select(q@Ident(_), name) if q.symbol.isModule => reify(jsExprOrDie(Ident(name)).splice)
       case Select(q, name) =>
         reify(JsSelect(jsExprOrDie(q).splice, c.literal(name.decoded).splice))
     }
@@ -82,10 +83,11 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
         for (index <- from until untilExpr) body
         for (index <- from to untilExpr) body
       */
-      case Apply(TypeApply(Select(Apply(Select(Apply(fn, List(Literal(Constant(from: Int)))), n@Name("until"|"to")), List(endExpr)), Name("foreach")), _),
+      case Apply(TypeApply(Select(Apply(Select(Apply(fn, List(from)), n@Name("until"|"to")), List(endExpr)), Name("foreach")), _),
       List(Function(List(ValDef(_, Name(index), _, _)), body))) if fn.is("scala.Predef.intWrapper") =>
         val forBody = jsStmtOrDie(body)
-        val init = reify(varDef(c.literal(index).splice, JsNum(c.literal(from).splice, false)))
+        val fromExpr = jsExprOrDie(from)
+        val init = reify(varDef(c.literal(index).splice, fromExpr.splice))
         val check = if (n.decoded == "until")
             reify(JsBinOp("<", JsIdent(c.literal(index).splice), jsExprOrDie(endExpr).splice))
           else reify(JsBinOp("<=", JsIdent(c.literal(index).splice), jsExprOrDie(endExpr).splice))
@@ -141,11 +143,11 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       case Apply(Ident(Name("Array")), args) =>
         val params = listToExpr(args map jsExprOrDie)
         reify(JsArray(params.splice))
-      case Apply(Select(New(AppliedTypeTree(Ident(arr), _)), ctor), List(Literal(Constant(_)))) if ctor == nme.CONSTRUCTOR && arr == newTypeName("Array") =>
+      case Apply(Select(New(AppliedTypeTree(Ident(TypeName("Array")), _)), ctor), List(Literal(Constant(_)))) if ctor == nme.CONSTRUCTOR =>
         reify(JsArray(Nil))
       // new Array[Int](256)
       case Apply(Select(a@New(t@TypeTree()), ctor), List(Literal(Constant(_))))
-        if ctor == nme.CONSTRUCTOR && t.original.isInstanceOf[AppliedTypeTree @unchecked] && t.original.asInstanceOf[AppliedTypeTree].tpt.equalsStructure(Select(Ident(newTermName("scala")), newTypeName("Array"))) =>
+        if ctor == nme.CONSTRUCTOR && t.original.isInstanceOf[AppliedTypeTree @unchecked] && t.original.asInstanceOf[AppliedTypeTree].tpt.equalsStructure(Select(Ident(TermName("scala")), TypeName("Array"))) =>
         reify(JsArray(Nil))
       case Apply(Select(a@New(t@TypeTree()), ctor), List(Literal(Constant(_)))) =>
         reify(JsArray(Nil))
@@ -183,6 +185,12 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
         reify(JsCall(JsIdent(c.literal(fn.decoded).splice), params.splice))
     }
 
+    lazy val jsStringHelpersExpr: ToExpr[JsExpr] = {
+      case q"$str.length()" if str.tpe.widen =:= typeOf[String] =>
+        reify(JsSelect(jsExprOrDie(str).splice, "length"))
+    }
+
+
     lazy val jsNewExpr: ToExpr[JsExpr] = {
       case Apply(Select(New(Ident(ident)), _), args) =>
         val params = funParams(args)
@@ -207,9 +215,6 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       case app@Apply(fun, args) if app.tpe <:< typeOf[JsAst] =>
         val expr = c.Expr[JsAst](app)
         reify(JsLazy(() => expr.splice))
-      case Apply(Select(p@Ident(_), Name(fun)), args) if p.symbol.isModule =>
-        val params = funParams(args)
-        reify(JsCall(JsIdent(c.literal(fun).splice), params.splice))
       case Apply(fun, args) =>
         val callee = jsExprOrDie apply fun
         val params = funParams(args)
@@ -421,6 +426,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       jsUnaryOp,
       jsBinOp,
       jsGlobalFuncsExpr,
+      jsStringHelpersExpr,
       jsJStringExpr,
       jsArrayExpr,
       jsNewExpr,

@@ -170,7 +170,7 @@ class ScalaToJsConverterTest extends FunSuite {
     } === expectedFunc5)
 
     val els = Some(JsCall(JsSelect(JsIdent("console"), "log"), List("a".toJs)).stmt)
-    val func6Body = JsIf(JsBinOp(">", JsCall(JsSelect(ja, "length"), Nil), 2.toJs), JsReturn(JsUnit), els).block
+    val func6Body = JsIf(JsBinOp(">", JsSelect(ja, "length"), 2.toJs), JsReturn(JsUnit), els).block
     assert(js { def func6(a: String) {
       if (a.length > 2) return else {
         console.log("a")
@@ -185,11 +185,11 @@ class ScalaToJsConverterTest extends FunSuite {
   test("for to/until") {
     val ast = js {
       val a = Array(1, 2)
-      for (i <- 0 until a.length) print(a(i))
+      for (i <- a(0) until a.length) print(a(i))
       for (i <- 0 to a.length) print(a(i))
     }
     val stmt = JsCall(JsIdent("print"), List(JsAccess(JsIdent("a"), JsIdent("i")))).stmt
-    val jsForUntil = JsFor(List(varDef("i", 0.toJs)), JsBinOp("<", JsIdent("i"), JsSelect(JsIdent("a"), "length")), List(JsUnOp("++", JsIdent("i")).stmt), stmt)
+    val jsForUntil = JsFor(List(varDef("i", JsAccess(JsIdent("a"), 0.toJs))), JsBinOp("<", JsIdent("i"), JsSelect(JsIdent("a"), "length")), List(JsUnOp("++", JsIdent("i")).stmt), stmt)
     val jsForTo = JsFor(List(varDef("i", 0.toJs)), JsBinOp("<=", JsIdent("i"), JsSelect(JsIdent("a"), "length")), List(JsUnOp("++", JsIdent("i")).stmt), stmt)
     assert(ast === JsBlock(List(varDef("a", JsArray(List(1.toJs, 2.toJs))), jsForUntil, jsForTo)))
   }
@@ -225,6 +225,8 @@ class ScalaToJsConverterTest extends FunSuite {
     }
     val call = JsCall(JsSelect(JsCall(JsSelect(JsIdent("a"), "replace"), List("s".toJs, "a".toJs)), "slice"), List(1.toJs, 2.toJs))
     assert(ast === JsBlock(List(varDef("a","str".toJs), call.stmt)))
+    val ast1 = js("String".length)
+    assert(ast1 === JsSelect(JsString("String"), "length"))
   }
 
   test("Arrays") {
@@ -286,9 +288,14 @@ class ScalaToJsConverterTest extends FunSuite {
     }
     val jsIf = JsIf(JsBinOp(">", JsSelect(JsIdent("a"), "length"), 1.toJs), JsRaw("console.log(a[1])").stmt, None)
     assert(ast2 === JsBlock(List(varDef("a", JsRaw("[1, 2]")), jsIf)))
-    object L { def f(x: Int): Int = ??? }
+    object L {
+      class A
+      def f(x: Int): Int = ???
+    }
     val ast3 = js { L.f(3) }
     assert(ast3 === JsCall(JsIdent("f"), List(3.toJs)))
+    val ast4 = js { new L.A() }
+    assert(ast4 === JsNew(JsCall(JsIdent("A"), Nil)))
   }
 
   test("RegExp") {
@@ -313,7 +320,7 @@ class ScalaToJsConverterTest extends FunSuite {
     import collection.mutable
     // Immutable Map
     val ast = js {
-      val a = Map("field" -> JArray(1, 2), ("field2", JArray(1)), "field3" → JArray[Int]())
+      val a = Map("field" -> JArray(1, 2), ("field2", JArray(1)), "field3" -> JArray[Int]())
       a("field").pop().toString()
     }
     val call1 = JsCall(JsSelect(JsCall(JsSelect(JsAccess(JsIdent("a"), "field".toJs), "pop"), Nil), "toString"), Nil)
@@ -362,7 +369,7 @@ class ScalaToJsConverterTest extends FunSuite {
   test("Throw") {
     val ast = javascript(throw new IndexOutOfBoundsException())
     /// FIXME: use === instead when scalatest for 2.11 is ready
-    assert(ast == JsThrow(JsNew(JsCall(JsSelect(JsSelect(JsIdent("scala"), "package"), "IndexOutOfBoundsException"), Nil))))
+    assert(ast == JsThrow(JsNew(JsCall(JsSelect(JsIdent("package"), "IndexOutOfBoundsException"), Nil))))
   }
 
   test("Object declaration") {

@@ -22,10 +22,10 @@ class JsonConverter[C <: Context](val c: C, val debug: Boolean) extends JsBasis[
       else if (tp weak_<:< typeOf[Double]) q"""JsNum($a, true)"""
       else if (tp.baseClasses.contains(mapSym)) {
         val TypeRef(_, _, List(_, arg)) = tp
-        q"if ($a ne null) JsAnonObjDecl($a.map { case (k, v) => k -> ${_toJson(arg, Ident(newTermName("v")))}}.toList) else JsNull"
+        q"if ($a ne null) JsAnonObjDecl($a.map { case (k, v) => k -> ${_toJson(arg, Ident(TermName("v")))}}.toList) else JsNull"
       } else if (isArray(tp)) {
         val TypeRef(_, _, List(arg)) = tp
-        q"""if ($a ne null) JsArray($a.map(n => ${_toJson(arg, Ident(newTermName("n")))}).toList) else JsNull"""
+        q"""if ($a ne null) JsArray($a.map(n => ${_toJson(arg, Ident(TermName("n")))}).toList) else JsNull"""
       } else {
         // println(tp.typeSymbol.typeSignature.typeSymbol.annotations)
         /*
@@ -76,12 +76,12 @@ class JsonConverter[C <: Context](val c: C, val debug: Boolean) extends JsBasis[
         // check Map first, because it's also Traversable
       else if (tp.baseClasses.contains(mapSym)) {
         val TypeRef(_, _, List(key, arg)) = tp
-        val func = readField(Ident(newTermName("v")), arg)
+        val func = readField(Ident(TermName("v")), arg)
         val col = mapping.get(tp.typeSymbol.fullName).getOrElse(c.abort(c.enclosingPosition, s"Can't find mapping for type $tp"))
         q"""$col ++ ($jsonObj.asInstanceOf[Map[String, Any]].map{case (k, v) => k -> $func})"""
       } else if (isArray(tp)) {
         val TypeRef(_, _, List(arg)) = tp
-        val func = readField(Ident(newTermName("e")), arg)
+        val func = readField(Ident(TermName("e")), arg)
         val tree = if (tp.typeSymbol == arraySym)
           q"""scala.Array[$arg]($jsonObj.asInstanceOf[List[Any]].map(e => $func).toSeq:_*)"""
         else if (tp.baseClasses.contains(traversableSym)) {
@@ -111,8 +111,7 @@ class JsonConverter[C <: Context](val c: C, val debug: Boolean) extends JsBasis[
     val tpe = weakTypeOf[A]
     val instantiation = readField(q"jsonType", tpe)
     val tree = q"""
-    import scala.util.parsing.json._
-    JSON.parseFull($s) match {
+    scala.util.parsing.json.JSON.parseFull($s) match {
       case None => sys.error("Can't parse JSON: " + $s)
       case Some(jsonType) => $instantiation
     }
