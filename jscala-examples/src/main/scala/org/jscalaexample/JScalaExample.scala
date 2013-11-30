@@ -1,7 +1,7 @@
 package org.jscalaexample
 
 import org.jscala._
-import scala.collection.mutable.ArrayBuffer
+import scala.util.Random
 
 object JScalaExample {
   def domManipulations() {
@@ -24,7 +24,7 @@ object JScalaExample {
           case "EN" => "Hello!"
           case "FR" => "Salut!"
           case "IT" => "Ciao!"
-          case _ => "Soory, I can't greet you in " + language + " yet"
+          case _ => "Sorry, I can't greet you in " + language + " yet"
         }
         print(res)
       }
@@ -43,7 +43,9 @@ object JScalaExample {
 
   def shortExample() {
     val scalaValue = "https://github.com/nau/jscala"
+    def rand() = Random.nextInt(5).toJs
     val $ = new JsDynamic {}
+
     val js = javascript {
       window.setTimeout(() => {
         val links = Array("https://github.com/nau/scala")
@@ -51,6 +53,7 @@ object JScalaExample {
         for (link <- links) {
           $("#id").append("<p>" + link + "</p>")
         }
+        for (i <- 0 to rand().as[Int]) print(inject(scalaValue))
       }, 1000)
     }
     println(js.asString)
@@ -67,8 +70,8 @@ object JScalaExample {
         val map = collection.mutable.Map[String, String]()
         if (typeof(map) == "string") {
           for (idx <- 0 until list.attributes.length) {
-            val attr = list.attributes.item(idx).asInstanceOf[Attribute]
-            map(attr.name) = func(attr.textContent).asInstanceOf[String]
+            val attr = list.attributes.item(idx).as[Attribute]
+            map(attr.name) = func(attr.textContent)
           }
         } else {
           val obj = new {
@@ -113,23 +116,42 @@ object JScalaExample {
     val json = u1.js.json.asString
     val main = javascript {
         val u = new User("nau", 2)
-        val u1Json = eval("(" + inject(json) + ")").as[User] // read User from json string generated above
+        // read User from json string generated above
+        val u1Json = eval("(" + inject(json) + ")").as[User] 
         val t = new Greeter()
         t.hello(u)
         t.hello(u1Json)
       }
-    val js = User.jscala.javascript ++ Greeter.jscala.javascript ++ main // join classes definitions with main code
+    // join classes definitions with main code
+    val js = User.jscala.javascript ++ Greeter.jscala.javascript ++ main 
     js.eval() // run using Rhino
     println(js.asString) // prints resulting JavaScript
   }
 
+
+  def astManipulation() {
+    val vardef = varDef("test", "Test".toJs).block
+    val print = JsCall(JsIdent("print"), JsIdent("test") :: Nil)
+    val ast = vardef ++ print
+    ast.eval()
+    println(ast.asString)
+    /* prints
+    Test
+    {
+     var test = "Test";
+     print(test);
+    }
+     */
+  }
+
   def main(args: Array[String]) {
-/*    domManipulations()
+    domManipulations()
     browserStuff()
-    complexExample()*/
-//    hello()
-//    shortExample()
+    complexExample()
+    hello()
+    shortExample()
     readmeExample()
+    astManipulation()
   }
 }
 
