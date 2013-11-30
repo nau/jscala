@@ -24,6 +24,7 @@ Supported Features:
 * Pretty printing and compression using YUI compressor
 * Basic @Javascript macro annotation support
 * Basic toJson/fromJson macros
+* @Typescripted annotation
 
 Examples
 ========
