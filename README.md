@@ -44,7 +44,7 @@ val js = javascript {
     if (typeof(map) == "string") {
       for (idx <- 0 until list.attributes.length) {
         val attr = list.attributes.item(idx).asInstanceOf[Attribute]
-        map(attr.name) = func(attr.textContent).asInstanceOf[String]
+        map(attr.name) = func(attr.textContent).as[String]
       }
     } else {
       val obj = new {
@@ -105,7 +105,7 @@ In your build.sbt add
 
     scalaVersion := "2.10.3"
 
-    libraryDependencies += "org.jscala" %% "jscala-macros" % "0.2"
+    libraryDependencies += "org.jscala" %% "jscala-macros" % "0.3"
     
 If you want to try the latest snapshot:
 
@@ -113,7 +113,7 @@ If you want to try the latest snapshot:
 
     resolvers += Resolver.sonatypeRepo("snapshots")
 
-    libraryDependencies += "org.jscala" %% "jscala-macros" % "0.3-SNAPSHOT"
+    libraryDependencies += "org.jscala" %% "jscala-macros" % "0.4-SNAPSHOT"
 
 In your code
 
@@ -137,9 +137,9 @@ In your build.sbt add
     
     addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.3-RC2" % "2.0.0-SNAPSHOT")
 
-    libraryDependencies += "org.jscala" %% "jscala-macros" % "0.3-SNAPSHOT"
+    libraryDependencies += "org.jscala" %% "jscala-macros" % "0.3"
     
-    libraryDependencies += "org.jscala" %% "jscala-annots" % "0.3-SNAPSHOT"
+    libraryDependencies += "org.jscala" %% "jscala-annots" % "0.3"
 
 In your code
 
@@ -215,7 +215,7 @@ Tetris sources are here: [jscala-examples/src/main/scala/org/jscalaexample/Tetri
 Planned Features
 ================
 
-* JavaScript frameworks support: jQuery, Angular.js etc
+* Language support improvements
 * Web frameworks support: Play, Lift
 
 Feedback
