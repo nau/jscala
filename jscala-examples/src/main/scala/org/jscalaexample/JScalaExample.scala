@@ -24,7 +24,7 @@ object JScalaExample {
           case "EN" => "Hello!"
           case "FR" => "Salut!"
           case "IT" => "Ciao!"
-          case _ => "Sorry, I can't greet you in " + language + " yet"
+          case _ => s"Sorry, I can't greet you in $language yet"
         }
         print(res)
       }
@@ -51,7 +51,7 @@ object JScalaExample {
         val links = Array("https://github.com/nau/scala")
         include("var raw = 'JavaScript'")
         for (link <- links) {
-          $("#id").append("<p>" + link + "</p>")
+          $("#id").append(s"<p>$link</p>")
         }
         for (i <- 0 to rand().as[Int]) print(inject(scalaValue))
       }, 1000)
@@ -106,7 +106,7 @@ object JScalaExample {
     @Javascript class User(val name: String, val id: Int)
     @Javascript(json = false) class Greeter {
       def hello(u: User) {
-        print("Hello, " + u.name + "\n")
+        print(s"Hello, ${u.name} \n")
       }
     }
     // Run on JVM
@@ -117,7 +117,7 @@ object JScalaExample {
     val main = javascript {
         val u = new User("nau", 2)
         // read User from json string generated above
-        val u1Json = eval("(" + inject(json) + ")").as[User] 
+        val u1Json = eval(s"(${inject(json)})").as[User]
         val t = new Greeter()
         t.hello(u)
         t.hello(u1Json)

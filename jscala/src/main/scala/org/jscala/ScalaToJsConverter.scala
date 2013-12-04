@@ -12,14 +12,17 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
   private val traits = collection.mutable.HashMap[String, List[Tree]]()
 
   def convert(tree: Tree): c.Expr[JsAst] = {
-    //      println((tree))
+    if (debug) println(tree)
     if (debug) println(tree.raw)
 
     lazy val jsSelect: ToExpr[JsExpr] = {
+      // org.scala.package.$ident => $ident
       case Select(Select(Select(Ident(Name("org")), Name("jscala")), Name("package")), Name(name)) =>
         reify(JsIdent(c.literal(name).splice))
+      // org.scala.$ident => $ident
       case Select(Select(Ident(Name("org")), Name("jscala")), Name(name)) =>
         reify(JsIdent(c.literal(name).splice))
+      // objectname.$ident => $ident
       case s@Select(q@Ident(_), name) if q.symbol.isModule => reify(jsExprOrDie(Ident(name)).splice)
       case Select(q, name) =>
         reify(JsSelect(jsExprOrDie(q).splice, c.literal(name.decoded).splice))
@@ -184,6 +187,16 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
         val params = funParams(args)
         reify(JsCall(JsIdent(c.literal(fn.decoded).splice), params.splice))
     }
+
+    lazy val jsStringInterpolation: ToExpr[JsExpr] = {
+      case q"scala.StringContext.apply(..$args).s(..$exprs)" =>
+        val at = args.map(a => q"JsString($a)")
+        val es = exprs.map(e => jsExprOrDie(e).tree)
+        val ls = es.zip(at.tail).flatMap { case (e, a) => List(e, a) }
+        val r = ls.foldLeft(at.head){case (r, a) => q"""JsBinOp("+", $r, $a)"""}
+        c.Expr[JsExpr](r)
+    }
+
 
     lazy val jsStringHelpersExpr: ToExpr[JsExpr] = {
       case q"$str.length()" if str.tpe.widen =:= typeOf[String] =>
@@ -427,6 +440,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       jsBinOp,
       jsGlobalFuncsExpr,
       jsStringHelpersExpr,
+      jsStringInterpolation,
       jsJStringExpr,
       jsArrayExpr,
       jsNewExpr,

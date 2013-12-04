@@ -228,6 +228,19 @@ class ScalaToJsConverterTest extends FunSuite {
     val ast1 = js("String".length)
     assert(ast1 === JsSelect(JsString("String"), "length"))
   }
+  
+  test("String interpolations") {
+    val ast = js {
+      val a = 1
+      s"string"
+      s"$a test"
+      s"a = $a and string is ${a.toString}"
+    }
+    assert(ast === varDef("a", 1.toJs) ++
+      "string".toJs ++
+      JsBinOp("+", JsBinOp("+", "".toJs, JsIdent("a")), " test".toJs) ++
+      JsBinOp("+", JsBinOp("+", JsBinOp("+", JsBinOp("+", "a = ".toJs, JsIdent("a")), " and string is ".toJs), JsCall(JsSelect(JsIdent("a"), "toString"), Nil)), "".toJs))
+  }
 
   test("Arrays") {
     assert(js(Array(1, 2)) === JsArray(List(1.toJs, 2.toJs)))
