@@ -243,7 +243,7 @@ trait Doc extends Node with DocElemCommon {
   def normalizeDocument() {}
 
   //	Opens an HTML output stream to collect output from document.write()
-  def open() {}
+  def open(MIMEtype: String = "", replace: String = "") {}
 
   //	Returns the (loading) status of the document
   def readyState = ""
@@ -261,10 +261,10 @@ trait Doc extends Node with DocElemCommon {
   def URL = ""
 
   //	Writes HTML expressions or JavaScript code to a document
-  def write() {}
+  def write(args: Any*) {}
 
   //	Same as write(), but adds a newline character after each statement
-  def writeln() {}
+  def writeln(args: Any*) {}
 }
 
 object document extends Doc
