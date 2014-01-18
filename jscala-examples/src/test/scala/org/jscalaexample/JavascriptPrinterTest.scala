@@ -32,7 +32,7 @@ class JavascriptPrinterTest extends FunSuite {
     }
     assert(ast.asString === """{
                             |  var a = ["1", "2", "3"];
-                            |  for (var iIdx = 0, i = a[iIdx]; iIdx < a.length; i = a[++iIdx]) console.log(i);
+                            |  for (var iColl = a, iIdx = 0, i = iColl[iIdx]; iIdx < iColl.length; i = iColl[++iIdx]) console.log(i);
                             |}""".stripMargin)
   }
 
@@ -55,9 +55,9 @@ class JavascriptPrinterTest extends FunSuite {
       for (i <- a) console.log(i)
     }
     assert(ast.compress === """var a=["1","2","3"];
-                           |for(var iIdx=0,i=a[iIdx];
-                           |iIdx<a.length;
-                           |i=a[++iIdx]){console.log(i)
+                           |for(var iColl=a,iIdx=0,i=iColl[iIdx];
+                           |iIdx<iColl.length;
+                           |i=iColl[++iIdx]){console.log(i)
                            |};""".stripMargin)
   }
 
@@ -82,5 +82,59 @@ class JavascriptPrinterTest extends FunSuite {
         |      break;
         |  };
         |}""".stripMargin)
+  }
+
+  test("foreach") {
+
+    assert(js(Array(1, 2) foreach { i => print(i) }).asString ===
+      """for (var iColl = [1, 2], iIdx = 0, i = iColl[iIdx]; iIdx < iColl.length; i = iColl[++iIdx]) print(i)""")
+
+    assert(js(Array[Int](1, 2) foreach { i => print(i) }).asString ===
+      """for (var iColl = [1, 2], iIdx = 0, i = iColl[iIdx]; iIdx < iColl.length; i = iColl[++iIdx]) print(i)""")
+
+    assert(js(Array("1", "2") foreach { i => print(i) }).asString ===
+      """for (var iColl = ["1", "2"], iIdx = 0, i = iColl[iIdx]; iIdx < iColl.length; i = iColl[++iIdx]) print(i)""")
+
+    assert(js(Seq(1, 2) foreach { i => print(i) }).asString ===
+      """for (var iColl = [1, 2], iIdx = 0, i = iColl[iIdx]; iIdx < iColl.length; i = iColl[++iIdx]) print(i)""")
+
+    assert(js(List(1, 2) foreach { i => print(i) }).asString ===
+      """for (var iColl = [1, 2], iIdx = 0, i = iColl[iIdx]; iIdx < iColl.length; i = iColl[++iIdx]) print(i)""")
+
+    assert(js(List("1", "2") foreach { i => print(i) }).asString ===
+      """for (var iColl = ["1", "2"], iIdx = 0, i = iColl[iIdx]; iIdx < iColl.length; i = iColl[++iIdx]) print(i)""")
+
+    assert(js(List[java.lang.String]("1", "2") foreach { i => print(i) }).asString ===
+      """for (var iColl = ["1", "2"], iIdx = 0, i = iColl[iIdx]; iIdx < iColl.length; i = iColl[++iIdx]) print(i)""")
+
+    val ast = js {
+      val a = Array(1, 2)
+      val b = Seq(1, 2)
+      val c = List(1, 2)
+      for (i <- a) print(i)
+      for (i <- b) print(i)
+      for (i <- c) print(i)
+    }
+    assert(ast.asString ===
+      """{
+        |  var a = [1, 2];
+        |  var b = [1, 2];
+        |  var c = [1, 2];
+        |  for (var iColl = a, iIdx = 0, i = iColl[iIdx]; iIdx < iColl.length; i = iColl[++iIdx]) print(i);
+        |  for (var iColl = b, iIdx = 0, i = iColl[iIdx]; iIdx < iColl.length; i = iColl[++iIdx]) print(i);
+        |  for (var iColl = c, iIdx = 0, i = iColl[iIdx]; iIdx < iColl.length; i = iColl[++iIdx]) print(i);
+        |}""".stripMargin)
+  }
+
+  test("callback func") {
+    case class User(name: String)
+    case class Project(title: String, users: Seq[User])
+
+    assert(js({ (p: Project) =>
+      if (p.title == "title")
+        for (u <- p.users) print(u.name)
+    }).asString === """function (p) {
+            |    if (p.title == "title") for (var uColl = p.users, uIdx = 0, u = uColl[uIdx]; uIdx < uColl.length; u = uColl[++uIdx]) print(u.name);
+            |  }""".stripMargin)
   }
 }
