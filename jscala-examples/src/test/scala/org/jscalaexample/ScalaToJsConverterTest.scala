@@ -243,6 +243,12 @@ class ScalaToJsConverterTest extends FunSuite {
   }
 
   test("Arrays") {
+    assert(js(Tuple1(1)) === JsArray(List(1.toJs)))
+    assert(js((1, 2)) === JsArray(List(1.toJs, 2.toJs)))
+    assert(js(("1", "2")) === JsArray(List("1".toJs, "2".toJs)))
+    assert(js((1, 2, 3)) === JsArray(List(1.toJs, 2.toJs, 3.toJs)))
+    assert(js((1, 2, 3, 4)) === JsArray(List(1.toJs, 2.toJs, 3.toJs, 4.toJs)))
+
     assert(js(Array(1, 2)) === JsArray(List(1.toJs, 2.toJs)))
     val arint = js {
       val a = new Array[Int](25)

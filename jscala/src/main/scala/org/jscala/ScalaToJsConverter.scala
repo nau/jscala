@@ -163,6 +163,10 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       // Array update
       case Apply(Select(path, Name("update")), List(key, value)) if isArray(path) =>
         reify(JsBinOp("=", JsAccess(jsExprOrDie(path).splice, jsExprOrDie(key).splice), jsExprOrDie(value).splice))
+      // Tuples
+      case Apply(TypeApply(Select(Select(Ident(Name("scala")), Name(tuple)), Name("apply")), _), args) if tuple.contains("Tuple") =>
+        val params = listToExpr(args map jsExprOrDie)
+        reify(JsArray(params.splice))
     }
 
     lazy val jsGlobalFuncsExpr: ToExpr[JsExpr] = {
