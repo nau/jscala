@@ -94,14 +94,8 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
         val check = if (n.decoded == "until")
             reify(JsBinOp("<", JsIdent(c.literal(index).splice), jsExprOrDie(endExpr).splice))
           else reify(JsBinOp("<=", JsIdent(c.literal(index).splice), jsExprOrDie(endExpr).splice))
-        val update = reify(JsUnOp("++", JsIdent(c.literal(index).splice)).stmt)
+        val update = reify(JsUnOp("++", JsIdent(c.literal(index).splice)))
         reify(JsFor(List(init.splice), check.splice, List(update.splice), forBody.splice))
-      /*
-        val coll = Array(1, 2)
-        for (ident <- coll) body
-      */
-      case Apply(TypeApply(Select(Apply(TypeApply(path, _), List(Ident(Name(coll)))), Name("foreach")), _), List(Function(List(ValDef(_, Name(ident), _, _)), body)))
-        if path.is("scala.Predef.refArrayOps") => forStmt(ident, coll, body)
       /*
         val coll = Seq(1, 2)
         for (ident <- coll) body
@@ -113,6 +107,21 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
        */
       case app@Apply(Apply(TypeApply(path, _), List(coll)), List(Function(List(ValDef(_, Name(ident), _, _)), body))) if path.is("org.jscala.package.forIn") =>
         reify(JsForIn(JsIdent(c.literal(ident).splice), jsExprOrDie(coll).splice, jsStmtOrDie(body).splice))
+
+      /*
+        coll.foreach(item)
+       */
+      case Apply(TypeApply(Select(collTree, Name("foreach")), _), List(Function(List(ValDef(_, Name(ident), _, _)), body))) if jsIterableExpr.isDefinedAt(collTree) =>
+        val collExpr = jsIterableExpr(collTree)
+        val coll = c.literal(ident + "Coll")
+        val idx = c.literal(ident + "Idx")
+        val seq = reify(JsIdent(coll.splice))
+        val len = reify(JsSelect(seq.splice, "length"))
+        val init = reify(JsVarDef(List(coll.splice -> collExpr.splice, idx.splice -> JsNum(0, false), c.literal(ident).splice -> JsAccess(seq.splice, JsIdent(idx.splice)))))
+        val check = reify(JsBinOp("<", JsIdent(idx.splice), len.splice))
+        val update = reify(JsBinOp("=", JsIdent(c.literal(ident).splice), JsAccess(JsIdent(coll.splice), JsUnOp("++", JsIdent(idx.splice)))))
+        val forBody = jsStmtOrDie(body)
+        reify(JsFor(List(init.splice), check.splice, List(update.splice), forBody.splice))
     }
 
     def forStmt(ident: String, coll: String, body: Tree) = {
@@ -121,9 +130,21 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       val len = reify(JsSelect(seq.splice, "length"))
       val init = reify(JsVarDef(List(idx.splice -> JsNum(0, false), c.literal(ident).splice -> JsAccess(seq.splice, JsIdent(idx.splice)))))
       val check = reify(JsBinOp("<", JsIdent(idx.splice), len.splice))
-      val update = reify(JsBinOp("=", JsIdent(c.literal(ident).splice), JsAccess(JsIdent(c.literal(coll).splice), JsUnOp("++", JsIdent(idx.splice)))).stmt)
+      val update = reify(JsBinOp("=", JsIdent(c.literal(ident).splice), JsAccess(JsIdent(c.literal(coll).splice), JsUnOp("++", JsIdent(idx.splice)))))
       val forBody = jsStmtOrDie(body)
       reify(JsFor(List(init.splice), check.splice, List(update.splice), forBody.splice))
+    }
+
+    lazy val jsSeqExpr: ToExpr[JsExpr] = {
+      case t if t.tpe.baseClasses.contains(seqSym) => jsExpr(t)
+    }
+
+    lazy val jsIterableExpr: ToExpr[JsExpr] = jsSeqExpr orElse jsArrayIdentOrExpr
+
+    lazy val jsArrayIdentOrExpr: ToExpr[JsExpr] = jsArrayIdent orElse jsArrayExpr
+
+    lazy val jsArrayIdent: ToExpr[JsIdent] = {
+      case i @ Ident(name) if i.tpe.baseClasses.contains(arraySym) => reify(JsIdent(c.literal(name.decoded).splice))
     }
 
     lazy val jsArrayExpr: ToExpr[JsExpr] = {
@@ -163,6 +184,10 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       // Array update
       case Apply(Select(path, Name("update")), List(key, value)) if isArray(path) =>
         reify(JsBinOp("=", JsAccess(jsExprOrDie(path).splice, jsExprOrDie(key).splice), jsExprOrDie(value).splice))
+      // arrayOps
+      case Apply(TypeApply(path, _), List(body)) if path.is("scala.Predef.refArrayOps") => jsArrayIdentOrExpr(body)
+      case Apply(Select(Select(This(TypeName("scala")), Name("Predef")), Name(ops)), List(body)) if ops.endsWith("ArrayOps") => jsArrayIdentOrExpr(body)
+      case Apply(Select(Select(Ident("scala"), Name("Predef")), Name(ops)), List(body)) if ops.endsWith("ArrayOps") => jsArrayIdentOrExpr(body)
     }
 
     lazy val jsGlobalFuncsExpr: ToExpr[JsExpr] = {
@@ -380,7 +405,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       case cd@ClassDef(mods, clsName, _, Template(_, _, body)) if mods.hasFlag(Flag.TRAIT) =>
         // Remember trait AST to embed its definitions in concrete class for simplicity
         traits(cd.symbol.fullName) = body
-        reify(JsExprStmt(JsUnit))
+        reify(JsUnit)
       case cd@ClassDef(_, clsName, _, t@Template(base, _, body)) =>
         val ctor = body.collect {
           case f@DefDef(mods, n, _, argss, _, Block(stats, _)) if n == nme.CONSTRUCTOR =>
@@ -456,9 +481,6 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     ) reduceLeft( _ orElse _)
 
     lazy val jsExprOrDie: ToExpr[JsExpr] = jsExpr orElse die("Unsupported syntax")
-    def jsExprOrError(msg: String): ToExpr[JsExpr] = jsExpr orElse die(msg)
-
-    lazy val jsExprStmt: ToExpr[JsExprStmt] = jsExpr andThen (jsExpr => reify(JsExprStmt(jsExpr.splice)))
 
     lazy val jsStmt: ToExpr[JsStmt] = Seq(
       jsBlock,
@@ -471,12 +493,12 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       jsFunDecl,
       jsClassDecl,
       jsReturn1,
-      jsExprStmt
+      jsExpr
     ) reduceLeft (_ orElse _)
 
     lazy val jsStmtOrDie: ToExpr[JsStmt] = jsStmt orElse die("Unsupported syntax")
 
-    lazy val jsAst: ToExpr[JsAst] = jsBlock orElse jsExpr orElse jsStmtOrDie
+    lazy val jsAst: ToExpr[JsAst] = jsStmtOrDie
 
     val expr = jsAst apply tree
 

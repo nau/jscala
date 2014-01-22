@@ -15,20 +15,13 @@ sealed trait JsStmt extends JsAst {
     case (JsBlock(lhs), JsStmts(rhs)) => JsBlock(lhs ::: rhs)
     case (JsStmts(lhs), JsStmts(rhs)) => JsStmts(lhs ::: rhs)
     case (JsBlock(lhs), s: JsStmt) => JsBlock(lhs :+ s)
-    case (JsBlock(lhs), s: JsExpr) => JsBlock(lhs :+ s.stmt)
     case (s: JsStmt, JsBlock(rhs)) => JsBlock(s :: rhs)
     case (JsStmts(lhs), s: JsStmt) => JsStmts(lhs :+ s)
-    case (JsStmts(lhs), s: JsExpr) => JsStmts(lhs :+ s.stmt)
     case (s: JsStmt, JsStmts(rhs)) => JsStmts(s :: rhs)
     case (lhs: JsStmt, rhs: JsStmt) => JsBlock(List(lhs, rhs))
-    case (lhs: JsStmt, rhs: JsExpr) => JsBlock(List(lhs, rhs.stmt))
   }
 }
-sealed trait JsExpr extends JsAst {
-  def stmt = JsExprStmt(this)
-  def block = JsBlock(List(this.stmt))
-  def join(a: JsAst) = stmt.join(a)
-}
+sealed trait JsExpr extends JsStmt
 sealed trait JsLit extends JsExpr
 
 case class JsBool(value: Boolean) extends JsLit
@@ -55,7 +48,6 @@ case class JsTernary(cond: JsExpr, `then`: JsExpr, `else`: JsExpr) extends JsExp
 case class JsBlock(stmts: List[JsStmt]) extends JsStmt
 case class JsTry(body: JsStmt, cat: Option[JsCatch], fin: Option[JsStmt]) extends JsStmt
 case class JsCatch(ident: JsIdent, body: JsStmt) extends JsStmt
-case class JsExprStmt(jsExpr: JsExpr) extends JsStmt
 case class JsIf(cond: JsExpr, `then`: JsStmt, `else`: Option[JsStmt]) extends JsStmt
 case class JsWhile(cond: JsExpr, body: JsStmt) extends JsStmt
 case class JsFor(init: List[JsStmt], check: JsExpr, update: List[JsStmt], body: JsStmt) extends JsStmt

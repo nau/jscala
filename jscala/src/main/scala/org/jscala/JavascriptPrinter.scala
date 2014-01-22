@@ -3,7 +3,7 @@ package org.jscala
 object JavascriptPrinter {
   private[this] val substitutions = Map("\\\"".r -> "\\\\\"", "\\n".r -> "\\\\n", "\\r".r -> "\\\\r", "\\t".r -> "\\\\t")
   private[this] def simplify(ast: JsAst): JsAst = ast match {
-    case JsBlock(stmts) => JsBlock(stmts.filter(_ != JsExprStmt(JsUnit)))
+    case JsBlock(stmts) => JsBlock(stmts.filter(_ != JsUnit))
     case JsCase(const, JsBlock(List(stmt))) => JsCase(const, stmt)
     case JsDefault(JsBlock(List(stmt))) => JsDefault(stmt)
     case t => t
@@ -49,9 +49,8 @@ object JavascriptPrinter {
       case JsCall(callee, params)               => s"""${p(callee)}(${params.map(p(_)).mkString(", ")})"""
       case JsBlock(Nil)                         => "{}"
       case JsBlock(stmts)                       => !< + stmts.map(p2(_) + ";\n").mkString + ind() + "}"
-      case JsExprStmt(jsExpr)                   => p(jsExpr)
       case JsTernary(cond, thenp, elsep)        => s"${s(cond)} ? ${p(thenp)} : ${p(elsep)}"
-      case JsIf(cond, JsExprStmt(expr), Some(JsExprStmt(els))) => s"${s(cond)} ? ${p(expr)} : ${p(els)}"
+      case JsIf(cond, expr: JsExpr, Some(els: JsExpr)) => s"${s(cond)} ? ${p(expr)} : ${p(els)}"
       case JsIf(cond, thenp, elsep)             => s"if (${p(cond)}) ${p(thenp)}" + elsep.map(e => s" else ${p(e)}").getOrElse("")
       case JsSwitch(expr, cases, default)       =>  s"switch (${p(expr)}) " +
         !< + cases.map(p2).mkString("\n") + default.map(d => "\n" + p2(d)).getOrElse("") + !>
