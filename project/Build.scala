@@ -17,7 +17,7 @@ object BuildSettings {
     publishArtifact in Test := false,
     pomIncludeRepository := (_ => false),
     pomExtra := extraPom,
-    addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise" % "2.0.0-SNAPSHOT" cross CrossVersion.full),
+    addCompilerPlugin("org.scalamacros" % "paradise" % "2.0.0-M2" cross CrossVersion.full),
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
@@ -56,7 +56,7 @@ object JScalaBuild extends Build {
   val tetris = TaskKey[Unit]("tetris", "Translates tetris Scala code to Javascript and runs the game")
 
   val tetrisTask = tetris <<= (baseDirectory in examples, fullClasspath in Runtime, runner in run, streams) map { (bd, cp, r, s) =>
-    r.run("org.jscalaexample.Tetris", Build.data(cp), Seq((bd / "javascript-tetris" / "tetris.js").toString), s.log)
+    r.run("org.jscalaexample.Tetris", Attributed.data(cp), Seq((bd / "javascript-tetris" / "tetris.js").toString), s.log)
     Desktop.getDesktop.browse(bd / "javascript-tetris" / "index.html" toURI)
   }
 
@@ -72,9 +72,7 @@ object JScalaBuild extends Build {
     "jscala-macros",
     file("jscala"),
     settings = buildSettings ++ Seq(
-      libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _ % "provided"),
-      libraryDependencies <++= (scalaVersion){ sv =>
-        if (sv.startsWith("2.11")) Seq("org.scala-lang" % "scala-parser-combinators" % "2.11.0-M4") else Seq()},
+      libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ % "provided"),
       libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
     )
   )
@@ -83,9 +81,10 @@ object JScalaBuild extends Build {
     "jscala-annots",
     file("jscala-annots"),
     settings = buildSettings ++ Seq(
-      libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _ % "provided"),
-      libraryDependencies <++= (scalaVersion){ sv =>
-        if (sv.startsWith("2.11")) Seq("fr.apyx" %% "ts2scala-macros" % "0.2.1") else Seq()
+      libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ % "provided"),
+      libraryDependencies <++= scalaVersion { sv =>
+        if (sv.startsWith("2.11")) Seq("fr.apyx" %% "ts2scala-macros" % "0.2.1" exclude("org.scala-lang", "scala-reflect"))
+        else Seq()
       },
       sources in Compile <<= (sources in Compile, scalaVersion, baseDirectory) map { (ss, sv, bd) =>
         if (sv.startsWith("2.11")) ss
@@ -102,11 +101,11 @@ object JScalaBuild extends Build {
     file("jscala-examples"),
     settings = buildSettings ++ Seq(
       tetrisTask,
-      libraryDependencies <++= (scalaVersion){ sv =>
+      libraryDependencies <++= scalaVersion { sv =>
         if (sv.startsWith("2.11"))
-          Seq("org.scalatest" % "scalatest_2.11.0-M5" % "2.0.M7" % "test")
+          Seq("org.scalatest" % "scalatest_2.11.0-M7" % "2.0.1-SNAP4" % "test")
         else
-          Seq("org.scalatest" %% "scalatest" % "1.9.1" % "test")
+          Seq("org.scalatest" %% "scalatest" % "2.0" % "test")
       },
       sources in Test <<= (sources in Test, scalaVersion) map { (ss, sv) =>
         if (sv.startsWith("2.11")) ss
