@@ -11,30 +11,30 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
 
   private val traits = collection.mutable.HashMap[String, List[Tree]]()
 
-  def convert(tree: Tree): c.Expr[JsAst] = {
+  def convert(tree: Tree): Tree = {
     if (debug) println(tree)
     if (debug) println(tree.raw)
 
     lazy val jsSelect: ToExpr[JsExpr] = {
       // org.scala.package.$ident => $ident
       case Select(Select(Select(Ident(Name("org")), Name("jscala")), Name("package")), Name(name)) =>
-        reify(JsIdent(c.literal(name).splice))
+        q"JsIdent($name)"
       // org.scala.$ident => $ident
       case Select(Select(Ident(Name("org")), Name("jscala")), Name(name)) =>
-        reify(JsIdent(c.literal(name).splice))
+        q"JsIdent($name)"
       // objectname.$ident => $ident
-      case s@Select(q@Ident(_), name) if q.symbol.isModule => reify(jsExprOrDie(Ident(name)).splice)
+      case s@Select(q@Ident(_), name) if q.symbol.isModule => jsExprOrDie(Ident(name))
       case Select(q, name) =>
-        reify(JsSelect(jsExprOrDie(q).splice, c.literal(name.decoded).splice))
+        q"JsSelect(${jsExprOrDie(q)}, ${name.decoded})"
     }
 
     lazy val jsUnaryOp: ToExpr[JsUnOp] = {
       case Select(q, n) if encodedUnaryOpsMap.contains(n) =>
         val op = encodedUnaryOpsMap(n)
-        reify(JsUnOp(c.literal(op).splice, jsExprOrDie(q).splice))
+        q"JsUnOp($op, ${jsExprOrDie(q)})"
     }
 
-    def funParams(args: List[Tree]): Expr[List[JsExpr]] = {
+    def funParams(args: List[Tree]): Tree = {
       val filteredDefaults = args collect {
         case arg@Select(_, n) if n.decoded.contains("$default$") => None
         case arg@Ident(n) if n.decoded.contains("$default$") => None
@@ -47,14 +47,14 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     lazy val jsBinOp: ToExpr[JsBinOp] = {
       case Apply(Select(q, n), List(rhs)) if encodedBinOpsMap.contains(n) =>
         val op = encodedBinOpsMap(n)
-        val opExpr = c.literal(op)
+        val opExpr = q"$op"
         val qExpr = jsExprOrDie(q)
         val rhsExpr = jsExprOrDie(rhs)
         // generate correct whole number devision JavaScript if a and b are [Byte,Short,Int,Long]: a/b|0
         if (op == "/" && q.isNum && rhs.isNum)
-          reify(JsBinOp("|", JsBinOp(opExpr.splice, qExpr.splice, rhsExpr.splice), JsNum(0, false)))
-        else reify(JsBinOp(opExpr.splice, qExpr.splice, rhsExpr.splice))
-      case Assign(lhs, rhs) => reify(JsBinOp("=", jsExprOrDie(lhs).splice, jsExprOrDie(rhs).splice))
+          q"""JsBinOp("|", JsBinOp($opExpr, $qExpr, $rhsExpr), JsNum(0, false))"""
+        else q"JsBinOp($opExpr, $qExpr, $rhsExpr)"
+      case Assign(lhs, rhs) =>q"""JsBinOp("=", ${jsExprOrDie(lhs)}, ${jsExprOrDie(rhs)})"""
     }
 
     lazy val jsTupleExpr: PFT[(Tree, Tree)] = {
@@ -68,17 +68,17 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
         val (lhs, rhs) = jsTupleExpr(arg)
         jsString.applyOrElse(lhs, (t: Tree) => c.abort(arg.pos, "Map key type can only be String")) -> jsExprOrDie(rhs)
       }
-      val params = listToExpr(fields.map { case (n, v) => reify((c.literal(n).splice, v.splice)) })
-      reify(JsAnonObjDecl(params.splice))
+      val params = listToExpr(fields.map { case (n, v) => q"($n, $v)" })
+      q"JsAnonObjDecl($params)"
     }
 
     lazy val jsMapExpr: ToExpr[JsExpr] = {
       case Apply(TypeApply(Select(path, Name("apply")), _), args) if path.tpe.baseClasses.contains(mapFactorySym) =>
         genMap(args)
       case Apply(Select(path, Name("apply")), List(index)) if path.tpe.baseClasses.contains(mapSym) =>
-        reify(JsAccess(jsExprOrDie(path).splice, jsExprOrDie(index).splice))
+        q"JsAccess(${jsExprOrDie(path)}, ${jsExprOrDie(index)})"
       case Apply(Select(path, Name("update")), List(key, value)) if path.tpe.baseClasses.contains(mapSym) =>
-        reify(JsBinOp("=", JsAccess(jsExprOrDie(path).splice, jsExprOrDie(key).splice), jsExprOrDie(value).splice))
+        q"""JsBinOp("=", JsAccess(${jsExprOrDie(path)}, ${jsExprOrDie(key)}), ${jsExprOrDie(value)})"""
     }
 
     lazy val jsForStmt: ToExpr[JsStmt] = {
@@ -90,12 +90,12 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       List(Function(List(ValDef(_, Name(index), _, _)), body))) if fn.is("scala.Predef.intWrapper") =>
         val forBody = jsStmtOrDie(body)
         val fromExpr = jsExprOrDie(from)
-        val init = reify(varDef(c.literal(index).splice, fromExpr.splice))
+        val init = q"varDef($index, $fromExpr)"
         val check = if (n.decoded == "until")
-            reify(JsBinOp("<", JsIdent(c.literal(index).splice), jsExprOrDie(endExpr).splice))
-          else reify(JsBinOp("<=", JsIdent(c.literal(index).splice), jsExprOrDie(endExpr).splice))
-        val update = reify(JsUnOp("++", JsIdent(c.literal(index).splice)))
-        reify(JsFor(List(init.splice), check.splice, List(update.splice), forBody.splice))
+          q"""JsBinOp("<", JsIdent($index), ${jsExprOrDie(endExpr)})"""
+          else q"""JsBinOp("<=", JsIdent($index), ${jsExprOrDie(endExpr)})"""
+        val update = q"""JsUnOp("++", JsIdent($index))"""
+        q"JsFor(List($init), $check, List($update), $forBody)"
       /*
         val coll = Seq(1, 2)
         for (ident <- coll) body
@@ -106,33 +106,33 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
         forIn(ident, coll) body
        */
       case app@Apply(Apply(TypeApply(path, _), List(coll)), List(Function(List(ValDef(_, Name(ident), _, _)), body))) if path.is("org.jscala.package.forIn") =>
-        reify(JsForIn(JsIdent(c.literal(ident).splice), jsExprOrDie(coll).splice, jsStmtOrDie(body).splice))
+        q"JsForIn(JsIdent($ident), ${jsExprOrDie(coll)}, ${jsStmtOrDie(body)})"
 
       /*
         coll.foreach(item)
        */
       case Apply(TypeApply(Select(collTree, Name("foreach")), _), List(Function(List(ValDef(_, Name(ident), _, _)), body))) if jsIterableExpr.isDefinedAt(collTree) =>
         val collExpr = jsIterableExpr(collTree)
-        val coll = c.literal(ident + "Coll")
-        val idx = c.literal(ident + "Idx")
-        val seq = reify(JsIdent(coll.splice))
-        val len = reify(JsSelect(seq.splice, "length"))
-        val init = reify(JsVarDef(List(coll.splice -> collExpr.splice, idx.splice -> JsNum(0, false), c.literal(ident).splice -> JsAccess(seq.splice, JsIdent(idx.splice)))))
-        val check = reify(JsBinOp("<", JsIdent(idx.splice), len.splice))
-        val update = reify(JsBinOp("=", JsIdent(c.literal(ident).splice), JsAccess(JsIdent(coll.splice), JsUnOp("++", JsIdent(idx.splice)))))
+        val coll = s"${ident}Coll"
+        val idx = s"${ident}Idx"
+        val seq = q"JsIdent($coll)"
+        val len = q"""JsSelect($seq, "length")"""
+        val init = q"JsVarDef(List($coll -> $collExpr, $idx -> JsNum(0, false), $ident -> JsAccess($seq, JsIdent($idx))))"
+        val check = q"""JsBinOp("<", JsIdent($idx), $len)"""
+        val update = q"""JsBinOp("=", JsIdent($ident), JsAccess(JsIdent($coll), JsUnOp("++", JsIdent($idx))))"""
         val forBody = jsStmtOrDie(body)
-        reify(JsFor(List(init.splice), check.splice, List(update.splice), forBody.splice))
+        q"JsFor(List($init), $check, List($update), $forBody)"
     }
 
     def forStmt(ident: String, coll: String, body: Tree) = {
-      val idx = c.literal(ident + "Idx")
-      val seq = reify(JsIdent(c.literal(coll).splice))
-      val len = reify(JsSelect(seq.splice, "length"))
-      val init = reify(JsVarDef(List(idx.splice -> JsNum(0, false), c.literal(ident).splice -> JsAccess(seq.splice, JsIdent(idx.splice)))))
-      val check = reify(JsBinOp("<", JsIdent(idx.splice), len.splice))
-      val update = reify(JsBinOp("=", JsIdent(c.literal(ident).splice), JsAccess(JsIdent(c.literal(coll).splice), JsUnOp("++", JsIdent(idx.splice)))))
+      val idx = s"${ident}Idx"
+      val seq = q"JsIdent($coll)"
+      val len = q"""JsSelect($seq, "length")"""
+      val init = q"JsVarDef(List($idx -> JsNum(0, false), $ident -> JsAccess($seq, JsIdent($idx))))"
+      val check = q"""JsBinOp("<", JsIdent($idx), $len)"""
+      val update = q"""JsBinOp("=", JsIdent($ident), JsAccess(JsIdent($coll), JsUnOp("++", JsIdent($idx))))"""
       val forBody = jsStmtOrDie(body)
-      reify(JsFor(List(init.splice), check.splice, List(update.splice), forBody.splice))
+      q"JsFor(List($init), $check, List($update), $forBody)"
     }
 
     lazy val jsSeqExpr: ToExpr[JsExpr] = {
@@ -144,46 +144,46 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     lazy val jsArrayIdentOrExpr: ToExpr[JsExpr] = jsArrayIdent orElse jsArrayExpr
 
     lazy val jsArrayIdent: ToExpr[JsIdent] = {
-      case i @ Ident(name) if i.tpe.baseClasses.contains(arraySym) => reify(JsIdent(c.literal(name.decoded).splice))
+      case i @ Ident(name) if i.tpe.baseClasses.contains(arraySym) => q"JsIdent(${name.decoded})"
     }
 
     lazy val jsArrayExpr: ToExpr[JsExpr] = {
       // Array creation
       case Apply(TypeApply(path, _), args) if path.is("org.jscala.JArray.apply") =>
         val params = listToExpr(args map jsExprOrDie)
-        reify(JsArray(params.splice))
+        q"JsArray($params)"
       case TypeApply(path, args) if path.is("scala.Array.apply") =>
         val params = listToExpr(args map jsExprOrDie)
-        reify(JsArray(params.splice))
+        q"JsArray($params)"
       case Apply(Apply(TypeApply(path, _), args), _) if path.is("scala.Array.apply") =>
         val params = listToExpr(args map jsExprOrDie)
-        reify(JsArray(params.splice))
+        q"JsArray($params)"
       case TypeApply(path, args) if path.is("scala.Array.apply") =>
         val params = listToExpr(args map jsExprOrDie)
-        reify(JsArray(params.splice))
+        q"JsArray($params)"
       case Apply(path, args) if path.is("scala.Array.apply") =>
         val params = listToExpr(args map jsExprOrDie)
-        reify(JsArray(params.splice))
+        q"JsArray($params)"
       case Apply(Ident(Name("Array")), args) =>
         val params = listToExpr(args map jsExprOrDie)
-        reify(JsArray(params.splice))
+        q"JsArray($params)"
       case Apply(Select(New(AppliedTypeTree(Ident(TypeName("Array")), _)), ctor), List(Literal(Constant(_)))) if ctor == nme.CONSTRUCTOR =>
-        reify(JsArray(Nil))
+        q"JsArray(Nil)"
       // new Array[Int](256)
       case Apply(Select(a@New(t@TypeTree()), ctor), List(Literal(Constant(_))))
         if ctor == nme.CONSTRUCTOR && t.original.isInstanceOf[AppliedTypeTree @unchecked] && t.original.asInstanceOf[AppliedTypeTree].tpt.equalsStructure(Select(Ident(TermName("scala")), TypeName("Array"))) =>
-        reify(JsArray(Nil))
+        q"JsArray(Nil)"
       case Apply(Select(a@New(t@TypeTree()), ctor), List(Literal(Constant(_)))) =>
-        reify(JsArray(Nil))
+        q"JsArray(Nil)"
       case Apply(TypeApply(Select(path, Name("apply")), _), args) if path.tpe.baseClasses.contains(seqFactorySym) =>
         val params = listToExpr(args map jsExprOrDie)
-        reify(JsArray(params.splice))
+        q"JsArray($params)"
       // Array access
       case Apply(Select(path, Name("apply")), List(idx)) if isArray(path) =>
-        reify(JsAccess(jsExprOrDie(path).splice, jsExprOrDie(idx).splice))
+        q"JsAccess(${jsExprOrDie(path)}, ${jsExprOrDie(idx)})"
       // Array update
       case Apply(Select(path, Name("update")), List(key, value)) if isArray(path) =>
-        reify(JsBinOp("=", JsAccess(jsExprOrDie(path).splice, jsExprOrDie(key).splice), jsExprOrDie(value).splice))
+        q"""JsBinOp("=", JsAccess(${jsExprOrDie(path)}, ${jsExprOrDie(key)}), ${jsExprOrDie(value)})"""
       // arrayOps
       case Apply(TypeApply(path, _), List(body)) if path.is("scala.Predef.refArrayOps") => jsArrayIdentOrExpr(body)
       case Apply(Select(Select(This(TypeName("scala")), Name("Predef")), Name(ops)), List(body)) if ops.endsWith("ArrayOps") => jsArrayIdentOrExpr(body)
@@ -191,11 +191,11 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       // Tuples
       case Apply(TypeApply(Select(Select(Ident(Name("scala")), Name(tuple)), Name("apply")), _), args) if tuple.contains("Tuple") =>
         val params = listToExpr(args map jsExprOrDie)
-        reify(JsArray(params.splice))
+        q"JsArray($params)"
     }
 
     lazy val jsGlobalFuncsExpr: ToExpr[JsExpr] = {
-      case Select(Apply(path, List(arg)), Name("jstr")) => reify(jsExprOrDie(arg).splice)
+      case Select(Apply(path, List(arg)), Name("jstr")) => jsExprOrDie(arg)
       case TypeApply(Select(Apply(jsAnyOps, List(expr)), Name("as")), _) if jsAnyOps.is("org.jscala.package.JsAnyOps") =>
         jsExprOrDie(expr)
       case Select(expr, Name("toDouble")) => jsExprOrDie(expr)
@@ -206,118 +206,118 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       case Apply(Select(path, Name(n)), List(expr)) if path.is("org.jscala.package") && n.startsWith("implicit") =>
         jsExprOrDie(expr)
       case Apply(path, List(Literal(Constant(js: String)))) if path.is("org.jscala.package.include") =>
-        reify(JsRaw(c.literal(js).splice))
+        q"JsRaw($js)"
       case app@Apply(Select(path, _), List(ident)) if path.is("org.jscala.package.inject") =>
-        reify(JsLazy(() => jsAst(ident).splice))
+        q"JsLazy(() => ${jsAst(ident)})"
       case app@Apply(Apply(TypeApply(path, _), List(ident)), List(jss)) if path.is("org.jscala.package.inject") =>
         val call = c.Expr[JsExpr](Apply(jss, List(ident)))
-        reify(JsLazy(() => call.splice))
+        q"JsLazy(() => $call)"
       case Apply(Select(path, fn), args) if path.is("org.jscala.package") =>
         val params = funParams(args)
-        reify(JsCall(JsIdent(c.literal(fn.decoded).splice), params.splice))
+        q"JsCall(JsIdent(${fn.decoded}), $params)"
     }
 
     lazy val jsStringInterpolation: ToExpr[JsExpr] = {
       case q"scala.StringContext.apply(..$args).s(..$exprs)" =>
         val at = args.map(a => q"JsString($a)")
-        val es = exprs.map(e => jsExprOrDie(e).tree)
+        val es = exprs.map(e => jsExprOrDie(e))
         val ls = es.zip(at.tail).flatMap { case (e, a) => List(e, a) }
         val r = ls.foldLeft(at.head){case (r, a) => q"""JsBinOp("+", $r, $a)"""}
-        c.Expr[JsExpr](r)
+        r
     }
 
 
     lazy val jsStringHelpersExpr: ToExpr[JsExpr] = {
       case q"$str.length()" if str.tpe.widen =:= typeOf[String] =>
-        reify(JsSelect(jsExprOrDie(str).splice, "length"))
+        q"""JsSelect(${jsExprOrDie(str)}, "length")"""
     }
 
 
     lazy val jsNewExpr: ToExpr[JsExpr] = {
       case Apply(Select(New(Ident(ident)), _), args) =>
         val params = funParams(args)
-        reify(JsNew(JsCall(JsIdent(c.literal(ident.decoded).splice), params.splice)))
+        q"JsNew(JsCall(JsIdent(${ident.decoded}), $params))"
       case Apply(Select(New(path), _), args) =>
         val params = funParams(args)
-        reify(JsNew(JsCall(jsExprOrDie(path).splice, params.splice)))
+        q"JsNew(JsCall(${jsExprOrDie(path)}, $params))"
     }
 
     lazy val jsCallExpr: ToExpr[JsExpr] = {
       case Apply(Select(lhs, name), List(rhs)) if name.decoded.endsWith("_=") =>
-        reify(JsBinOp("=", JsSelect(jsExprOrDie(lhs).splice, c.literal(name.decoded.dropRight(2)).splice), jsExprOrDie(rhs).splice))
+        q"""JsBinOp("=", JsSelect(${jsExprOrDie(lhs)}, ${name.decoded.dropRight(2)}), ${jsExprOrDie(rhs)})"""
       case Apply(Apply(Select(sel, Name("applyDynamic")), List(Literal(Constant(name: String)))), args) =>
-        val callee = reify(JsSelect(jsExprOrDie(sel).splice, c.literal(name).splice))
+        val callee = q"JsSelect(${jsExprOrDie(sel)}, $name)"
         val params = listToExpr(args.map(jsExprOrDie))
-        reify(JsCall(callee.splice, params.splice))
+        q"JsCall($callee, $params)"
       case Apply(Apply(Select(sel, Name("updateDynamic")), List(Literal(Constant(name: String)))), List(arg)) =>
-        val callee = reify(JsSelect(jsExprOrDie(sel).splice, c.literal(name).splice))
-        reify(JsBinOp("=", callee.splice, jsExprOrDie(arg).splice))
+        val callee = q"JsSelect(${jsExprOrDie(sel)}, $name)"
+        q"""JsBinOp("=", $callee, ${jsExprOrDie(arg)})"""
       case Apply(Select(sel, Name("selectDynamic")), List(Literal(Constant(name: String)))) =>
-        reify(JsSelect(jsExprOrDie(sel).splice, c.literal(name).splice))
+        q"JsSelect(${jsExprOrDie(sel)}, $name)"
       case app@Apply(fun, args) if app.tpe <:< typeOf[JsAst] =>
         val expr = c.Expr[JsAst](app)
-        reify(JsLazy(() => expr.splice))
+        q"JsLazy(() => $expr)"
       case Apply(fun, args) =>
         val callee = jsExprOrDie apply fun
         val params = funParams(args)
-        reify(JsCall(callee.splice, params.splice))
+        q"JsCall($callee, $params)"
     }
 
     lazy val jsIfStmt: ToExpr[JsIf] = {
       case If(cond, thenp, elsep) =>
         val condJsExpr = jsExprOrDie(cond)
         val thenJsExpr = jsStmtOrDie(thenp)
-        val elseJsStmt = if (isUnit(elsep)) reify(None) else reify(Some(jsStmtOrDie(elsep).splice))
-        reify(JsIf(condJsExpr.splice, thenJsExpr.splice, elseJsStmt.splice))
+        val elseJsStmt = if (isUnit(elsep)) q"None" else q"Some(${jsStmtOrDie(elsep)})"
+        q"JsIf($condJsExpr, $thenJsExpr, $elseJsStmt)"
     }
 
     lazy val jsTernaryExpr: ToExpr[JsTernary] = {
       case If(cond, thenp, elsep) if !thenp.tpe.=:=(typeOf[Unit]) && !isUnit(elsep) && jsExpr.isDefinedAt(thenp) && jsExpr.isDefinedAt(elsep) =>
         val condJsExpr = jsExprOrDie(cond)
         val thenJsExpr = jsExprOrDie(thenp)
-        val elseExpr = reify(jsExprOrDie(elsep).splice)
-        reify(JsTernary(condJsExpr.splice, thenJsExpr.splice, elseExpr.splice))
+        val elseExpr = jsExprOrDie(elsep)
+        q"JsTernary($condJsExpr, $thenJsExpr, $elseExpr)"
     }
 
     lazy val jsWhileStmt: ToExpr[JsWhile] = {
       case LabelDef(termName, Nil, If(cond, Block(List(body), _), _)) if termName.encoded.startsWith("while$") =>
         val condJsExpr = jsExprOrDie(cond)
         val bodyJsStmt = jsStmtOrDie(body)
-        reify(JsWhile(condJsExpr.splice, bodyJsStmt.splice))
+        q"JsWhile($condJsExpr, $bodyJsStmt)"
     }
 
     def addAssign(tree: Tree, name: Name) = tree match {
-      case Block(stats, expr) => Block(stats :+ Assign(Ident(name), expr), c.literalUnit.tree)
-      case expr => Block(Assign(Ident(name), expr) :: Nil, c.literalUnit.tree)
+      case Block(stats, expr) => Block(stats :+ Assign(Ident(name), expr), q"()")
+      case expr => Block(Assign(Ident(name), expr) :: Nil, q"()")
     }
 
-    lazy val jsIfExpr: PartialFunction[(Name, Tree), Expr[JsIf]] = {
+    lazy val jsIfExpr: PartialFunction[(Name, Tree), Tree] = {
       case (name, If(cond, thenp, elsep)) =>
         val condJsExpr = jsExprOrDie(cond)
         val thenJsExpr = jsStmtOrDie(addAssign(thenp, name))
         val elseJsExpr = jsStmtOrDie(addAssign(elsep, name))
-        reify(JsIf(condJsExpr.splice, thenJsExpr.splice, Some(elseJsExpr.splice)))
+        q"JsIf($condJsExpr, $thenJsExpr, Some($elseJsExpr))"
     }
 
-    lazy val jsMatchExpr: PartialFunction[(Name, Tree), Expr[JsSwitch]] = {
+    lazy val jsMatchExpr: PartialFunction[(Name, Tree), Tree] = {
       case (name, Match(expr, cases)) => jsSwitchGen(expr, cases, body => addAssign(body, name))
     }
 
     lazy val jsVarDefStmt: ToExpr[JsStmt] = {
       case ValDef(_, name, _, rhs) =>
-        val identifier = c.literal(name.decoded)
+        val identifier = name.decoded
         if (jsTernaryExpr.isDefinedAt(rhs)) {
-          val idents = listToExpr(List(reify(identifier.splice -> jsTernaryExpr(rhs).splice)))
-          reify(JsVarDef(idents.splice))
+          val idents = listToExpr(List(q"$identifier -> ${jsTernaryExpr(rhs)}"))
+          q"JsVarDef($idents)"
         } else {
           val funcs = Seq(jsIfExpr, jsMatchExpr).reduceLeft(_ orElse _) andThen { expr =>
-            val ident = listToExpr(List(reify(identifier.splice -> JsUnit)))
-            reify(JsStmts(List(JsVarDef(ident.splice), expr.splice)))
+            val ident = listToExpr(List(q"$identifier -> JsUnit"))
+            q"JsStmts(List(JsVarDef($ident), $expr))"
           }
           val x = name -> rhs
           funcs.applyOrElse(x, (t: (TermName, Tree)) => {
-            val ident = listToExpr(List(reify(identifier.splice -> jsExprOrDie(rhs).splice)))
-            reify(JsVarDef(ident.splice))
+            val ident = listToExpr(List(q"$identifier -> ${jsExprOrDie(rhs)}"))
+            q"JsVarDef($ident)"
           })
         }
 
@@ -326,68 +326,69 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     lazy val jsFunBody: ToExpr[JsBlock] = {
       case lit@Literal(_) =>
         val body = if (isUnit(lit)) Nil else List(jsReturnStmt(lit))
-        reify(JsBlock(listToExpr(body).splice))
+        q"JsBlock(${listToExpr(body)})"
       case b@Block(stmts, expr) =>
         val lastExpr = if (isUnit(expr)) Nil
         else if (expr.tpe =:= typeOf[Unit]) List(jsStmtOrDie(expr))
         else List(jsReturn(expr))
         val ss = listToExpr(stmts.map(jsStmtOrDie) ::: lastExpr)
-        reify(JsBlock(ss.splice))
+        q"JsBlock($ss)"
       case rhs =>
-        if (rhs.tpe =:= typeOf[Unit]) reify(JsBlock(List(jsStmtOrDie(rhs).splice)))
-        else reify(JsBlock(List(jsReturn(rhs).splice)))
+        if (rhs.tpe =:= typeOf[Unit]) q"JsBlock(List(${jsStmtOrDie(rhs)}))"
+        else q"JsBlock(List(${jsReturn(rhs)}))"
     }
 
     lazy val jsFunDecl: ToExpr[JsFunDecl] = {
       case DefDef(_, name, _, vparamss, _, rhs) =>
-        val ident = c.literal(name.decoded)
-        val a = vparamss.headOption.map(vp => vp.map(v => c.literal(v.name.decoded))).getOrElse(Nil)
+        val ident = name.decoded
+        val a = vparamss.headOption.map(vp => vp.map(v => q"${v.name.decoded}")).getOrElse(Nil)
         val params = listToExpr(a)
         val body = jsFunBody(rhs)
-        reify(JsFunDecl(ident.splice, params.splice, body.splice))
+        q"JsFunDecl($ident, $params, $body)"
     }
 
     lazy val jsAnonFunDecl: ToExpr[JsAnonFunDecl] = {
       case Block(Nil, Function(vparams, rhs)) =>
-        val params = listToExpr(vparams.map(v => c.literal(v.name.decoded)))
+        val params = listToExpr(vparams.map(v => q"${v.name.decoded}"))
         val body = jsFunBody(rhs)
-        reify(JsAnonFunDecl(params.splice, body.splice))
+        q"JsAnonFunDecl($params, $body)"
       case Function(vparams, rhs) =>
-        val params = listToExpr(vparams.map(v => c.literal(v.name.decoded)))
+        val params = listToExpr(vparams.map(v => q"${v.name.decoded}"))
         val body = jsFunBody(rhs)
-        reify(JsAnonFunDecl(params.splice, body.splice))
+        q"JsAnonFunDecl($params, $body)"
     }
 
     lazy val jsTry: ToExpr[JsTry] = {
       case Try(body, catchBlock, finBody) =>
         val ctch = catchBlock match {
-          case Nil => reify(None)
+          case Nil => q"None"
           case List(CaseDef(Bind(pat, _), EmptyTree, catchBody)) =>
-            reify(Some(JsCatch(JsIdent(c.literal(pat.decoded).splice), jsStmtOrDie(catchBody).splice)))
+            q"Some(JsCatch(JsIdent(${pat.decoded}), ${jsStmtOrDie(catchBody)}))"
         }
-        val fin = if (finBody.equalsStructure(EmptyTree)) reify(None)
-        else reify(Some(jsStmtOrDie(finBody).splice))
-        reify(JsTry(jsStmtOrDie(body).splice, ctch.splice, fin.splice))
+        val fin = if (finBody.equalsStructure(EmptyTree)) q"None"
+        else q"Some(${jsStmtOrDie(finBody)})"
+        q"JsTry(${jsStmtOrDie(body)}, $ctch, $fin)"
     }
 
     lazy val jsThrowExpr: ToExpr[JsThrow] = {
-      case Throw(expr) => reify(JsThrow(jsExprOrDie(expr).splice))
+      case Throw(expr) => q"JsThrow(${jsExprOrDie(expr)})"
     }
 
     def jsSwitchGen(expr: Tree, cases: List[CaseDef], f: Tree => Tree) = {
       val cs = cases collect {
-        case CaseDef(const@Literal(Constant(_)), EmptyTree, body) => reify(JsCase(List(jsLit(const).splice), jsStmtOrDie(f(body)).splice))
-        case CaseDef(sel@Select(path, n), EmptyTree, body) => reify(JsCase(List(jsExprOrDie(sel).splice), jsStmtOrDie(f(body)).splice))
+        case CaseDef(const@Literal(Constant(_)), EmptyTree, body) => q"JsCase(List(${jsLit(const)}), ${jsStmtOrDie(f(body))})"
+        case CaseDef(sel@Select(path, n), EmptyTree, body) =>
+          q"JsCase(List(${jsExprOrDie(sel)}), ${jsStmtOrDie(f(body))})"
         case CaseDef(Alternative(xs), EmptyTree, body) =>
           val stmt = jsStmtOrDie(f(body))
           val consts = listToExpr(xs map(c => jsLit(c)))
-          reify(JsCase(consts.splice, stmt.splice))
+          q"JsCase($consts, $stmt)"
       }
       val df = (cases collect {
-        case CaseDef(Ident(nme.WILDCARD), EmptyTree, body) => reify(Some(JsDefault(jsStmtOrDie(f(body)).splice)))
-      }).headOption.getOrElse(reify(None))
+        case CaseDef(Ident(nme.WILDCARD), EmptyTree, body) => q"Some(JsDefault(${jsStmtOrDie(f(body))}))"
+      }).headOption.getOrElse(q"None")
       val css = listToExpr(cs)
-      reify(JsSwitch(jsExprOrDie(expr).splice, css.splice, df.splice))
+      q"JsSwitch(${jsExprOrDie(expr)}, $css, $df)"
     }
 
     lazy val jsSwitch: ToExpr[JsSwitch] = {
@@ -398,7 +399,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       f.name != nme.CONSTRUCTOR && f.name.decoded != "$init$" && !f.mods.hasFlag(Flags.ACCESSOR.toLong.asInstanceOf[FlagSet] | Flag.DEFERRED)
     }
 
-    lazy val objectFields: PFT[(String, Expr[JsExpr])] = {
+    lazy val objectFields: PFT[(String, Tree)] = {
       case f@DefDef(mods, n, _, argss, _, body) if eligibleDef(f) =>
         n.decoded -> jsExprOrDie(Function(argss.flatten, body))
       case ValDef(mods, n, _, rhs) if !rhs.equalsStructure(EmptyTree)
@@ -409,7 +410,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       case cd@ClassDef(mods, clsName, _, Template(_, _, body)) if mods.hasFlag(Flag.TRAIT) =>
         // Remember trait AST to embed its definitions in concrete class for simplicity
         traits(cd.symbol.fullName) = body
-        reify(JsUnit)
+        q"JsUnit"
       case cd@ClassDef(_, clsName, _, t@Template(base, _, body)) =>
         val ctor = body.collect {
           case f@DefDef(mods, n, _, argss, _, Block(stats, _)) if n == nme.CONSTRUCTOR =>
@@ -417,40 +418,40 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
             a
         }
         if (ctor.size != 1) c.abort(c.enclosingPosition, "Only single primary constructor is currently supported. Sorry.")
-        val init = ctor.head.map(f => f -> reify(JsIdent(c.literal(f).splice)))
+        val init = ctor.head.map(f => f -> q"JsIdent($f)")
         val inherited = t.tpe.baseClasses.map(_.fullName).flatMap {bc => traits.get(bc).toList }
         val bigBody = inherited.foldRight(List[Tree]())(_ ::: _) ::: body
         val defs = bigBody.collect(objectFields)
         val fields = init ::: defs
-        val fs = listToExpr(fields.map { case (n, v) => reify((c.literal(n).splice, v.splice)) })
-        val args = listToExpr(ctor.head.map(arg => c.literal(arg)))
+        val fs = listToExpr(fields.map { case (n, v) => q"($n, $v)" })
+        val args = listToExpr(ctor.head.map(arg => q"$arg"))
         val ctorBody = listToExpr(bigBody.collect {
           case _: ValDef => None
           case _: DefDef => None
           case stmt => Some(stmt)
         }.flatten.map(jsStmtOrDie))
-        val ctorFuncDecl = reify(JsFunDecl(c.literal(clsName.decoded).splice, args.splice, JsBlock(ctorBody.splice)))
-        reify(JsObjDecl(c.literal(clsName.decoded).splice, ctorFuncDecl.splice, fs.splice))
+        val ctorFuncDecl = q"JsFunDecl(${clsName.decoded}, $args, JsBlock($ctorBody))"
+        q"JsObjDecl(${clsName.decoded}, $ctorFuncDecl, $fs)"
     }
 
     lazy val jsAnonObjDecl: ToExpr[JsAnonObjDecl] = {
       case Block(List(ClassDef(_, clsName, _, Template(_, _, body))), _/* Constructor call */) =>
         val defs = body.collect(objectFields)
-        val params = listToExpr(defs.map { case (n, v) => reify((c.literal(n).splice, v.splice)) })
-        reify(JsAnonObjDecl(params.splice))
+        val params = listToExpr(defs.map { case (n, v) => q"($n, $v)" })
+        q"JsAnonObjDecl($params)"
     }
 
     lazy val jsReturn1: ToExpr[JsStmt] = {
-      case Return(expr) => reify(JsReturn(jsExprOrDie(expr).splice))
+      case Return(expr) => q"JsReturn(${jsExprOrDie(expr)})"
     }
     lazy val jsReturn: ToExpr[JsStmt] = jsReturnStmt orElse jsStmtOrDie
-    lazy val jsReturnStmt: ToExpr[JsReturn] = jsExpr andThen (jsExpr => reify(JsReturn(jsExpr.splice)))
+    lazy val jsReturnStmt: ToExpr[JsReturn] = jsExpr andThen (jsExpr => q"JsReturn($jsExpr)")
 
     lazy val jsBlock: ToExpr[JsBlock] = {
       case Block(stmts, expr) =>
-        val stmtTrees = if (expr.equalsStructure(c.literalUnit.tree)) stmts else stmts :+ expr
+        val stmtTrees = if (expr.equalsStructure(q"()")) stmts else stmts :+ expr
         val ss = listToExpr(stmtTrees map jsStmtOrDie)
-        reify(JsBlock(ss.splice))
+        q"JsBlock($ss)"
     }
 
     def die(msg: String) = new ToExpr[Nothing] {
@@ -506,8 +507,10 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
 
     val expr = jsAst apply tree
 
-    if (functionTypes.exists(tree.tpe.<:<)) {
-      c.Expr(q"${expr.tree}.asInstanceOf[${expr.staticType} with ${tree.tpe}]")
+    val resultTree = if (!tree.tpe.=:=(typeOf[Nothing]) && functionTypes.exists(tree.tpe.<:<)) {
+      q"${expr}.asInstanceOf[JsAst with ${tree.tpe}]"
     } else expr
+
+    resultTree
   }
 }

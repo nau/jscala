@@ -194,19 +194,19 @@ package object jscala {
   object Macros {
     def javascriptImpl(c: Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
       val parser = new ScalaToJsConverter[c.type](c, debug = false)
-      parser.convert(expr.tree)
+      c.Expr(parser.convert(expr.tree))
     }
     def javascriptStringImpl(c: Context)(expr: c.Expr[Any]): c.Expr[String] = {
       import c.universe._
       val parser = new ScalaToJsConverter[c.type](c, debug = false)
       val jsAst = parser.convert(expr.tree)
-      val strAst = reify { new JsAstOps(jsAst.splice).asString }
-      c.literal(c.eval(strAst))
+      val str = c.eval(c.Expr[String](q"new JsAstOps($jsAst).asString"))
+      c.Expr[String](q"$str")
     }
 
     def javascriptDebugImpl(c: Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
       val parser = new ScalaToJsConverter[c.type](c, debug = true)
-      parser.convert(expr.tree)
+      c.Expr(parser.convert(expr.tree))
     }
 
     def toJsonImpl[A: c.WeakTypeTag](c: Context)(ref: c.Expr[A]): c.Expr[JsExpr] = {

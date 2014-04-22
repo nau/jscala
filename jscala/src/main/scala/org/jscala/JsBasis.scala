@@ -22,24 +22,25 @@ trait JsBasis[C <: Context] extends MacroHelpers[C] {
     case Literal(Constant(value: Char))  => value.toString
     case Literal(Constant(value: String))  => value
   }
-  protected lazy val jsStringLit: ToExpr[JsString] = jsString.andThen(s => reify(JsString(c.literal(s).splice)))
+  protected lazy val jsStringLit: ToExpr[JsString] = jsString.andThen(s => q"JsString($s)")
 
   protected lazy val jsNumLit: ToExpr[JsNum] = {
-    case Literal(Constant(value: Byte))  => reify(JsNum(c.literal(value).splice, isFloat = false))
-    case Literal(Constant(value: Short))  => reify(JsNum(c.literal(value).splice, isFloat = false))
-    case Literal(Constant(value: Int))  => reify(JsNum(c.literal(value).splice, isFloat = false))
-    case Literal(Constant(value: Long))  => reify(JsNum(c.literal(value).splice, isFloat = false))
-    case Literal(Constant(value: Double))  => reify(JsNum(c.literal(value).splice, isFloat = true))
+    case Literal(Constant(value: Byte))  => q"JsNum($value, isFloat = false)"
+    case Literal(Constant(value: Short))  => q"JsNum($value, isFloat = false)"
+    case Literal(Constant(value: Int))  => q"JsNum($value, isFloat = false)"
+    case Literal(Constant(value: Long))  => q"JsNum($value, isFloat = false)"
+    case Literal(Constant(value: Float))  => q"JsNum($value, isFloat = true)"
+    case Literal(Constant(value: Double))  => q"JsNum($value, isFloat = true)"
   }
   protected lazy val jsBoolLit: ToExpr[JsBool] = {
-    case Literal(Constant(value: Boolean))  => reify(JsBool(c.literal(value).splice))
+    case Literal(Constant(value: Boolean))  => q"JsBool($value)"
   }
-  protected object jsUnitLit extends PartialFunction[Tree, Expr[JsUnit.type]] {
-    def apply(v1: Tree) = reify(JsUnit)
+  protected object jsUnitLit extends PartialFunction[Tree, Tree] {
+    def apply(v1: Tree) = q"JsUnit"
     def isDefinedAt(x: Tree) = isUnit(x)
   }
-  protected object jsNullLit extends PartialFunction[Tree, Expr[JsNull.type]] {
-    def apply(v1: Tree) = reify(JsNull)
+  protected object jsNullLit extends PartialFunction[Tree, Tree] {
+    def apply(v1: Tree) = q"JsNull"
     def isDefinedAt(x: Tree) = isNull(x)
   }
 
@@ -48,15 +49,15 @@ trait JsBasis[C <: Context] extends MacroHelpers[C] {
   }
 
   protected lazy val jsThis: ToExpr[JsIdent] = {
-    case This(name) => reify(JsIdent("this"))
+    case This(name) => q"""JsIdent("this")"""
   }
 
   protected lazy val jsIdent: ToExpr[JsIdent] = {
-    case Ident(name) => reify(JsIdent(c.literal(name.decoded).splice))
+    case Ident(name) =>q"JsIdent(${name.decoded})"
   }
 
   protected lazy val jsJStringExpr: ToExpr[JsExpr] = {
     case Apply(Select(New(Select(Select(Ident(Name("org")), Name("jscala")), Name("JString"))), _), List(Literal(Constant(str: String)))) =>
-      reify(JsString(c.literal(str).splice))
+      q"JsString($str)"
   }
 }

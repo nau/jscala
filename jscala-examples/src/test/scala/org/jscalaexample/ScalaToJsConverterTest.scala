@@ -206,7 +206,7 @@ class ScalaToJsConverterTest extends FunSuite {
       forIn(d) { i => print(i) }
     }
     /// FIXME: use === instead when scalatest for 2.11 is ready
-    assert(js == JsBlock(List(
+    assert(js === JsBlock(List(
       JsVarDef(List(("a", JsArray(List(1.toJs, 2.toJs))))),
       JsVarDef(List(("b", JsArray(List("1".toJs, "2".toJs))))),
       JsVarDef(List(("c", JsAnonObjDecl(List("1" -> 1.toJs, "2" -> 2.toJs))))),

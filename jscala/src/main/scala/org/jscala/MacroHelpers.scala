@@ -12,7 +12,7 @@ trait MacroHelpers[C <: Context] {
   val c: C
   import c.universe._
   type PFT[A] = PartialFunction[Tree, A]
-  type ToExpr[A] = PFT[Expr[A]]
+  type ToExpr[A] = PFT[Tree]
 
   implicit class TreeHelper(tree: Tree) {
     def is(p: String): Boolean = tree.equalsStructure(select(p)) || tree.equalsStructure(select(p, s => This(TypeName(s))))
@@ -60,10 +60,10 @@ trait MacroHelpers[C <: Context] {
   protected def isNull(tree: Tree) = tree.equalsStructure(q"null")
   protected def isArray(path: c.Tree) =
     path.tpe.typeSymbol == definitions.ArrayClass || path.tpe.typeSymbol == jarraySym || path.tpe.baseClasses.contains(seqSym)
-  protected def listToExpr[T](exprs: List[Expr[T]]): Expr[List[T]] = c.Expr[List[T]](q"List(..$exprs)")
-  protected def mapToExpr[V](m: Map[String, Expr[V]]): Expr[Map[String, V]] = {
+  protected def listToExpr(exprs: List[Tree]): Tree = q"List(..$exprs)"
+  protected def mapToExpr(m: Map[String, Tree]): Tree = {
     val args: List[Tree] =  m.map { case (k, v) => q"$k -> $v" }.toList
-    c.Expr[Map[String, V]](q"Map(..$args)")
+    q"Map(..$args)"
   }
 
   def prn(t: Tree) {
