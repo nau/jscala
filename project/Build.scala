@@ -8,8 +8,8 @@ object BuildSettings {
   val buildSettings = Defaults.defaultSettings ++ Seq(
     organization := "org.jscala",
     version := "0.4-SNAPSHOT",
-    scalaVersion := "2.10.3",
-    crossScalaVersions := Seq("2.10.3", "2.11.0-M7"),
+    scalaVersion := "2.11.0",
+    crossScalaVersions := Seq("2.10.4", "2.11.0"),
     resolvers += Resolver.sonatypeRepo("snapshots"),
     credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
     publishTo <<= version((v: String) => Some( if (v.trim endsWith "SNAPSHOT") ossSnapshots else ossStaging)),
@@ -17,7 +17,7 @@ object BuildSettings {
     publishArtifact in Test := false,
     pomIncludeRepository := (_ => false),
     pomExtra := extraPom,
-    addCompilerPlugin("org.scalamacros" % "paradise" % "2.0.0-M2" cross CrossVersion.full),
+    addCompilerPlugin("org.scalamacros" % "paradise" % "2.0.0" cross CrossVersion.full),
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
@@ -25,7 +25,18 @@ object BuildSettings {
 //      "-Ystatistics",
 //      "-verbose",
       "-language:_"
-	  )
+	  ),
+    initialize ~= { _ => sys.props("scalac.patmat.analysisBudget") = "10" },
+    libraryDependencies := {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        // if scala 2.11+ is used, quasiquotes are merged into scala-reflect
+        case Some((2, scalaMajor)) if scalaMajor >= 11 => libraryDependencies.value
+        // in Scala 2.10, quasiquotes are provided by macro paradise
+        case Some((2, 10)) =>
+          libraryDependencies.value ++ Seq(
+            "org.scalamacros" %% "quasiquotes" % "2.0.0" cross CrossVersion.binary)
+      }
+    }
   )
 
   def extraPom =
@@ -82,8 +93,9 @@ object JScalaBuild extends Build {
     file("jscala-annots"),
     settings = buildSettings ++ Seq(
       libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ % "provided"),
+
       libraryDependencies <++= scalaVersion { sv =>
-        if (sv.startsWith("2.11")) Seq("fr.apyx" %% "ts2scala-macros" % "0.2.1" exclude("org.scala-lang", "scala-reflect"))
+        if (sv.startsWith("2.11")) Seq("fr.apyx" % "ts2scala-macros_2.11.0-M7" % "0.2.1" exclude("org.scala-lang", "scala-reflect"))
         else Seq()
       },
       sources in Compile <<= (sources in Compile, scalaVersion, baseDirectory) map { (ss, sv, bd) =>
@@ -101,15 +113,12 @@ object JScalaBuild extends Build {
     file("jscala-examples"),
     settings = buildSettings ++ Seq(
       tetrisTask,
-      libraryDependencies <++= scalaVersion { sv =>
-        if (sv.startsWith("2.11"))
-          Seq("org.scalatest" % "scalatest_2.11.0-M7" % "2.0.1-SNAP4" % "test")
-        else
-          Seq("org.scalatest" %% "scalatest" % "2.0" % "test")
-      },
+      libraryDependencies += "org.scalatest" %% "scalatest" % "2.1.3" % "test",
       sources in Test <<= (sources in Test, scalaVersion) map { (ss, sv) =>
-        if (sv.startsWith("2.11")) ss
-        else ss.filter { (f: java.io.File) => !f.getCanonicalPath.endsWith("TypescriptedTest.scala") } }
+//        if (sv.startsWith("2.11")) ss
+//        else ss.filter { (f: java.io.File) => !f.getCanonicalPath.endsWith("TypescriptedTest.scala") }
+        ss.filter { (f: java.io.File) => !f.getCanonicalPath.endsWith("TypescriptedTest.scala") }
+      }
     )
   ) dependsOn(jscalaAnnots)
 }

@@ -7,6 +7,7 @@ import scala.reflect.macros.Context
  */
 class JsonConverter[C <: Context](val c: C, val debug: Boolean) extends JsBasis[C] {
   import c.universe._
+  import compat._
 
   private def isPrim(tp: Type) = {
     tp =:= typeOf[String] || tp =:= typeOf[Boolean] || (tp weak_<:< typeOf[Double])
