@@ -49,14 +49,14 @@ object MacroAnnotations {
     var dbg = false
     var json = true
     c.macroApplication match {
-      case Apply(Select(Apply(Select(New(Ident(js)), nme.CONSTRUCTOR), args), _), _) if js.decoded == "Javascript" =>
+      case Apply(Select(Apply(Select(New(Ident(js)), nme.CONSTRUCTOR), args), _), _) if js.decodedName.toString == "Javascript" =>
         args match {
           case List(Literal(Constant(js: Boolean))) => json = js
           case List(Literal(Constant(js: Boolean)), Literal(Constant(db: Boolean))) => json = js; dbg = db
           case _ =>
             args.foreach {
-            case AssignOrNamedArg(Ident(debug), Literal(Constant(v: Boolean))) if debug.decoded == "debug" => dbg = v
-            case AssignOrNamedArg(Ident(js), Literal(Constant(v: Boolean))) if js.decoded == "json" => json = v
+            case AssignOrNamedArg(Ident(debug), Literal(Constant(v: Boolean))) if debug.decodedName.toString == "debug" => dbg = v
+            case AssignOrNamedArg(Ident(js), Literal(Constant(v: Boolean))) if js.decodedName.toString == "json" => json = v
             case _ =>
           }
         }

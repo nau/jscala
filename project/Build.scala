@@ -84,7 +84,7 @@ object JScalaBuild extends Build {
     file("jscala"),
     settings = buildSettings ++ Seq(
       libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ % "provided"),
-      libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7"
+      libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7" % "provided"
     )
   )
 
@@ -95,7 +95,7 @@ object JScalaBuild extends Build {
       libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ % "provided"),
 
       libraryDependencies <++= scalaVersion { sv =>
-        if (sv.startsWith("2.11")) Seq("fr.apyx" % "ts2scala-macros_2.11.0-M7" % "0.2.1" exclude("org.scala-lang", "scala-reflect"))
+        if (sv.startsWith("2.11")) Seq("fr.apyx" %% "ts2scala-macros" % "0.3.0" exclude("org.scala-lang", "scala-reflect"))
         else Seq()
       },
       sources in Compile <<= (sources in Compile, scalaVersion, baseDirectory) map { (ss, sv, bd) =>
@@ -114,10 +114,10 @@ object JScalaBuild extends Build {
     settings = buildSettings ++ Seq(
       tetrisTask,
       libraryDependencies += "org.scalatest" %% "scalatest" % "2.1.3" % "test",
+      libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7",
       sources in Test <<= (sources in Test, scalaVersion) map { (ss, sv) =>
-//        if (sv.startsWith("2.11")) ss
-//        else ss.filter { (f: java.io.File) => !f.getCanonicalPath.endsWith("TypescriptedTest.scala") }
-        ss.filter { (f: java.io.File) => !f.getCanonicalPath.endsWith("TypescriptedTest.scala") }
+        if (sv.startsWith("2.11")) ss
+        else ss.filter { (f: java.io.File) => !f.getCanonicalPath.endsWith("TypescriptedTest.scala") }
       }
     )
   ) dependsOn(jscalaAnnots)

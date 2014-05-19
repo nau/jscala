@@ -19,6 +19,6 @@ object TypescriptedMacro {
   }
 }
 
-class Typescripted(file:String) extends TS2Scala(file) {
-  override def macroTransform(annottees: Any*) = macro TypescriptedMacro.impl
+class Typescripted(file:String) extends StaticAnnotation {
+  def macroTransform(annottees: Any*) = macro TypescriptedMacro.impl
 }

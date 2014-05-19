@@ -25,7 +25,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       // objectname.$ident => $ident
       case s@Select(q@Ident(_), name) if q.symbol.isModule => jsExprOrDie(Ident(name))
       case Select(q, name) =>
-        q"JsSelect(${jsExprOrDie(q)}, ${name.decoded})"
+        q"JsSelect(${jsExprOrDie(q)}, ${name.decodedName.toString})"
     }
 
     lazy val jsUnaryOp: ToExpr[JsUnOp] = {
@@ -36,8 +36,8 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
 
     def funParams(args: List[Tree]): Tree = {
       val filteredDefaults = args collect {
-        case arg@Select(_, n) if n.decoded.contains("$default$") => None
-        case arg@Ident(n) if n.decoded.contains("$default$") => None
+        case arg@Select(_, n) if n.decodedName.toString.contains("$default$") => None
+        case arg@Ident(n) if n.decodedName.toString.contains("$default$") => None
         case Typed(exp, _) => Some(jsExprOrDie(exp))
         case arg => Some(jsExprOrDie(arg))
       }
@@ -91,7 +91,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
         val forBody = jsStmtOrDie(body)
         val fromExpr = jsExprOrDie(from)
         val init = q"varDef($index, $fromExpr)"
-        val check = if (n.decoded == "until")
+        val check = if (n.decodedName.toString == "until")
           q"""JsBinOp("<", JsIdent($index), ${jsExprOrDie(endExpr)})"""
           else q"""JsBinOp("<=", JsIdent($index), ${jsExprOrDie(endExpr)})"""
         val update = q"""JsUnOp("++", JsIdent($index))"""
@@ -144,7 +144,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     lazy val jsArrayIdentOrExpr: ToExpr[JsExpr] = jsArrayIdent orElse jsArrayExpr
 
     lazy val jsArrayIdent: ToExpr[JsIdent] = {
-      case i @ Ident(name) if i.tpe.baseClasses.contains(arraySym) => q"JsIdent(${name.decoded})"
+      case i @ Ident(name) if i.tpe.baseClasses.contains(arraySym) => q"JsIdent(${name.decodedName.toString})"
     }
 
     lazy val jsArrayExpr: ToExpr[JsExpr] = {
@@ -214,7 +214,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
         q"JsLazy(() => $call)"
       case Apply(Select(path, fn), args) if path.is("org.jscala.package") =>
         val params = funParams(args)
-        q"JsCall(JsIdent(${fn.decoded}), $params)"
+        q"JsCall(JsIdent(${fn.decodedName.toString}), $params)"
     }
 
     lazy val jsStringInterpolation: ToExpr[JsExpr] = {
@@ -236,15 +236,15 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     lazy val jsNewExpr: ToExpr[JsExpr] = {
       case Apply(Select(New(Ident(ident)), _), args) =>
         val params = funParams(args)
-        q"JsNew(JsCall(JsIdent(${ident.decoded}), $params))"
+        q"JsNew(JsCall(JsIdent(${ident.decodedName.toString}), $params))"
       case Apply(Select(New(path), _), args) =>
         val params = funParams(args)
         q"JsNew(JsCall(${jsExprOrDie(path)}, $params))"
     }
 
     lazy val jsCallExpr: ToExpr[JsExpr] = {
-      case Apply(Select(lhs, name), List(rhs)) if name.decoded.endsWith("_=") =>
-        q"""JsBinOp("=", JsSelect(${jsExprOrDie(lhs)}, ${name.decoded.dropRight(2)}), ${jsExprOrDie(rhs)})"""
+      case Apply(Select(lhs, name), List(rhs)) if name.decodedName.toString.endsWith("_=") =>
+        q"""JsBinOp("=", JsSelect(${jsExprOrDie(lhs)}, ${name.decodedName.toString.dropRight(2)}), ${jsExprOrDie(rhs)})"""
       case Apply(Apply(Select(sel, Name("applyDynamic")), List(Literal(Constant(name: String)))), args) =>
         val callee = q"JsSelect(${jsExprOrDie(sel)}, $name)"
         val params = listToExpr(args.map(jsExprOrDie))
@@ -305,7 +305,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
 
     lazy val jsVarDefStmt: ToExpr[JsStmt] = {
       case ValDef(_, name, _, rhs) =>
-        val identifier = name.decoded
+        val identifier = name.decodedName.toString
         if (jsTernaryExpr.isDefinedAt(rhs)) {
           val idents = listToExpr(List(q"$identifier -> ${jsTernaryExpr(rhs)}"))
           q"JsVarDef($idents)"
@@ -340,8 +340,8 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
 
     lazy val jsFunDecl: ToExpr[JsFunDecl] = {
       case DefDef(_, name, _, vparamss, _, rhs) =>
-        val ident = name.decoded
-        val a = vparamss.headOption.map(vp => vp.map(v => q"${v.name.decoded}")).getOrElse(Nil)
+        val ident = name.decodedName.toString
+        val a = vparamss.headOption.map(vp => vp.map(v => q"${v.name.decodedName.toString}")).getOrElse(Nil)
         val params = listToExpr(a)
         val body = jsFunBody(rhs)
         q"JsFunDecl($ident, $params, $body)"
@@ -349,11 +349,11 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
 
     lazy val jsAnonFunDecl: ToExpr[JsAnonFunDecl] = {
       case Block(Nil, Function(vparams, rhs)) =>
-        val params = listToExpr(vparams.map(v => q"${v.name.decoded}"))
+        val params = listToExpr(vparams.map(v => q"${v.name.decodedName.toString}"))
         val body = jsFunBody(rhs)
         q"JsAnonFunDecl($params, $body)"
       case Function(vparams, rhs) =>
-        val params = listToExpr(vparams.map(v => q"${v.name.decoded}"))
+        val params = listToExpr(vparams.map(v => q"${v.name.decodedName.toString}"))
         val body = jsFunBody(rhs)
         q"JsAnonFunDecl($params, $body)"
     }
@@ -363,7 +363,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
         val ctch = catchBlock match {
           case Nil => q"None"
           case List(CaseDef(Bind(pat, _), EmptyTree, catchBody)) =>
-            q"Some(JsCatch(JsIdent(${pat.decoded}), ${jsStmtOrDie(catchBody)}))"
+            q"Some(JsCatch(JsIdent(${pat.decodedName.toString}), ${jsStmtOrDie(catchBody)}))"
         }
         val fin = if (finBody.equalsStructure(EmptyTree)) q"None"
         else q"Some(${jsStmtOrDie(finBody)})"
@@ -396,14 +396,14 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     }
 
     def eligibleDef(f: DefDef) = {
-      f.name != nme.CONSTRUCTOR && f.name.decoded != "$init$" && !f.mods.hasFlag(Flags.ACCESSOR.toLong.asInstanceOf[FlagSet] | Flag.DEFERRED)
+      f.name != nme.CONSTRUCTOR && f.name.decodedName.toString != "$init$" && !f.mods.hasFlag(Flags.ACCESSOR.toLong.asInstanceOf[FlagSet] | Flag.DEFERRED)
     }
 
     lazy val objectFields: PFT[(String, Tree)] = {
       case f@DefDef(mods, n, _, argss, _, body) if eligibleDef(f) =>
-        n.decoded -> jsExprOrDie(Function(argss.flatten, body))
+        n.decodedName.toString -> jsExprOrDie(Function(argss.flatten, body))
       case ValDef(mods, n, _, rhs) if !rhs.equalsStructure(EmptyTree)
-        && !mods.hasFlag(Flags.PARAMACCESSOR.toLong.asInstanceOf[FlagSet] | Flag.ABSTRACT) => n.decoded.trim -> jsExprOrDie(rhs)
+        && !mods.hasFlag(Flags.PARAMACCESSOR.toLong.asInstanceOf[FlagSet] | Flag.ABSTRACT) => n.decodedName.toString.trim -> jsExprOrDie(rhs)
     }
 
     lazy val jsClassDecl: ToExpr[JsStmt] = {
@@ -414,7 +414,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       case cd@ClassDef(_, clsName, _, t@Template(base, _, body)) =>
         val ctor = body.collect {
           case f@DefDef(mods, n, _, argss, _, Block(stats, _)) if n == nme.CONSTRUCTOR =>
-            val a = argss.flatten.map(v => v.name.decoded)
+            val a = argss.flatten.map(v => v.name.decodedName.toString)
             a
         }
         if (ctor.size != 1) c.abort(c.enclosingPosition, "Only single primary constructor is currently supported. Sorry.")
@@ -430,8 +430,8 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
           case _: DefDef => None
           case stmt => Some(stmt)
         }.flatten.map(jsStmtOrDie))
-        val ctorFuncDecl = q"JsFunDecl(${clsName.decoded}, $args, JsBlock($ctorBody))"
-        q"JsObjDecl(${clsName.decoded}, $ctorFuncDecl, $fs)"
+        val ctorFuncDecl = q"JsFunDecl(${clsName.decodedName.toString}, $args, JsBlock($ctorBody))"
+        q"JsObjDecl(${clsName.decodedName.toString}, $ctorFuncDecl, $fs)"
     }
 
     lazy val jsAnonObjDecl: ToExpr[JsAnonObjDecl] = {

@@ -99,7 +99,7 @@ class JsonConverter[C <: Context](val c: C, val debug: Boolean) extends JsBasis[
           else {
             val ctorSym = ctorSig.head._1.owner.asMethod
             ctorSym.paramss.map(_.map(f => {
-              readField(q"$jsonObj.asInstanceOf[Map[String, Any]](${f.name.decoded})", ctorSig(f))
+              readField(q"$jsonObj.asInstanceOf[Map[String, Any]](${f.name.decodedName.toString})", ctorSig(f))
             }))
           }
         }

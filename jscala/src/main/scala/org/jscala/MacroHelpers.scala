@@ -22,11 +22,11 @@ trait MacroHelpers[C <: Context] {
   }
 
   implicit class NameHelper(name: Name) {
-    def isArrow: Boolean = name.decoded == "->" || name.decoded == "→"
+    def isArrow: Boolean = name.decodedName.toString == "->" || name.decodedName.toString == "→"
   }
 
   object Name {
-    def unapply(name: Name): Option[String] = Some(name.decoded)
+    def unapply(name: Name): Option[String] = Some(name.decodedName.toString)
   }
 
   object TermName {

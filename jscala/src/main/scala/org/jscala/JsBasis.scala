@@ -53,7 +53,7 @@ trait JsBasis[C <: Context] extends MacroHelpers[C] {
   }
 
   protected lazy val jsIdent: ToExpr[JsIdent] = {
-    case Ident(name) =>q"JsIdent(${name.decoded})"
+    case Ident(name) =>q"JsIdent(${name.decodedName.toString})"
   }
 
   protected lazy val jsJStringExpr: ToExpr[JsExpr] = {
