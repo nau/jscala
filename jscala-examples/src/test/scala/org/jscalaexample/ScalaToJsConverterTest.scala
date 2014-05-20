@@ -320,6 +320,11 @@ class ScalaToJsConverterTest extends FunSuite {
     assert(ast4 === JsNew(JsCall(JsIdent("A"), Nil)))
   }
 
+  test("include") {
+    val ast = javascript { include(javascript(1 + 2)) }
+    assert(ast.eval() === 3.0)
+  }
+
   test("RegExp") {
     val ast = js {
       val a = new RegExp("d.*", "g")
@@ -437,10 +442,11 @@ class ScalaToJsConverterTest extends FunSuite {
       val l = inject(map1)
       val m = inject(map2)
       val n = inject(seq)
+      val o = inject(JsNull)
       val gen = genJsAst()
-      a.as[String] + b + c + d + e.toString() + gen + j + k("a") + l("a") + m("a") + n(0)
+      a.as[String] + b + c + d + e.toString() + gen + j + k("a") + l("a") + m("a") + n(0) + o
     }
-    assert(ast.eval() === "15hehemy11,2,3gentruebctrue1")
+    assert(ast.eval() === "15hehemy11,2,3gentruebctrue1null")
   }
 
   test("() => JsAst injection") {

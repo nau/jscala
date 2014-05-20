@@ -207,7 +207,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
         jsExprOrDie(expr)
       case Apply(path, List(Literal(Constant(js: String)))) if path.is("org.jscala.package.include") =>
         q"JsRaw($js)"
-      case app@Apply(Select(path, _), List(ident)) if path.is("org.jscala.package.inject") =>
+      case app@Apply(path, List(ident)) if path.is("org.jscala.package.include") =>
         q"JsLazy(() => ${jsAst(ident)})"
       case app@Apply(Apply(TypeApply(path, _), List(ident)), List(jss)) if path.is("org.jscala.package.inject") =>
         val call = c.Expr[JsExpr](Apply(jss, List(ident)))

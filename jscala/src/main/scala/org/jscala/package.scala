@@ -182,7 +182,7 @@ package object jscala {
    */
   def forIn[A, B](obj: AnyRef)(f: String => Unit) = ???
 
-  def inject(a: JsAst) = ???
+  def include(a: JsAst) = ???
   /**
    * Injects a value into generated JavaScript using JsSerializer
    */
