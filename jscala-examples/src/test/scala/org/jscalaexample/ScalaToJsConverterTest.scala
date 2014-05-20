@@ -412,10 +412,15 @@ class ScalaToJsConverterTest extends FunSuite {
     assert(ast.eval() === "a22211115")
   }
 
-  test("Lazy") {
+  test("Lazy injection") {
     val x = 15
     val y = "hehe"
+    val bool = true
     def f() = "1"
+    val map = Map("a" -> JsString("b"))
+    val map1 = Map("a" -> "c")
+    val map2 = Map("a" -> true)
+    val seq = List(1, 2)
     case class My(a: String)
     implicit def zzz: JsSerializer[My] = new JsSerializer[My] { def apply(a: My) = JsString(a.a) }
     val z = My("my")
@@ -427,10 +432,15 @@ class ScalaToJsConverterTest extends FunSuite {
       val c = inject(z)
       val d = inject(f _)
       val e = inject(ls)
+      val j = inject(bool)
+      val k = inject(map)
+      val l = inject(map1)
+      val m = inject(map2)
+      val n = inject(seq)
       val gen = genJsAst()
-      a.as[String] + b + c + d + e.toString() + gen
+      a.as[String] + b + c + d + e.toString() + gen + j + k("a") + l("a") + m("a") + n(0)
     }
-    assert(ast.eval() === "15hehemy11,2,3gen")
+    assert(ast.eval() === "15hehemy11,2,3gentruebctrue1")
   }
 
   test("() => JsAst injection") {

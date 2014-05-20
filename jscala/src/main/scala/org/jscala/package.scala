@@ -4,7 +4,6 @@ import javax.script.ScriptEngineManager
 import com.yahoo.platform.yui.compressor.JavaScriptCompressor
 import java.io.{StringWriter, StringReader}
 import org.mozilla.javascript.ErrorReporter
-import scala.annotation.StaticAnnotation
 
 package object jscala {
   import language.experimental.macros
@@ -55,9 +54,10 @@ package object jscala {
   implicit def implicitSeq2JArray[A](s: Seq[A]): JArray[A] = ???
   implicit def implicitJArray2Seq[A](s: JArray[A]): Seq[A] = ???
 
-  trait JsSerializer[A] {
+  trait JsSerializer[-A] {
     def apply(a: A): JsExpr
   }
+  implicit object jsExprJsSerializer extends JsSerializer[JsExpr] { def apply(a: JsExpr) = a }
   implicit object boolJsSerializer extends JsSerializer[Boolean] { def apply(a: Boolean) = JsBool(a) }
   implicit object byteJsSerializer extends JsSerializer[Byte] { def apply(a: Byte) = JsNum(a, false) }
   implicit object shortJsSerializer extends JsSerializer[Short] { def apply(a: Short) = JsNum(a, false) }
@@ -67,10 +67,25 @@ package object jscala {
   implicit object doubleJsSerializer extends JsSerializer[Double] { def apply(a: Double) = JsNum(a, true) }
   implicit object stringJsSerializer extends JsSerializer[String] { def apply(a: String) = JsString(a) }
   implicit def arrJsSerializer[A](implicit ev: JsSerializer[A]): JsSerializer[Array[A]] =
-    new JsSerializer[Array[A]] { def apply(a: Array[A]) = JsArray(a.map(ev.apply).toList) }
-  implicit object seqJsSerializer extends JsSerializer[collection.Seq[JsExpr]] { def apply(a: collection.Seq[JsExpr]) = JsArray(a.toList) }
-  implicit object mapJsSerializer extends JsSerializer[collection.Map[String,JsExpr]] { def apply(a: collection.Map[String,JsExpr]) = JsAnonObjDecl(a.toList) }
-  implicit def funcJsSerializer[A](implicit ev: JsSerializer[A]): JsSerializer[() => A] = new JsSerializer[() => A] { def apply(a: () => A) = ev.apply(a()) }
+    new JsSerializer[Array[A]] {
+      def apply(a: Array[A]) = JsArray(a.map(ev.apply).toList)
+    }
+
+  implicit def seqJsSerializer[A](implicit ev: JsSerializer[A]): JsSerializer[collection.Seq[A]] =
+    new JsSerializer[collection.Seq[A]] {
+      def apply(a: collection.Seq[A]) = JsArray(a.map(ev.apply).toList)
+    }
+
+  implicit def mapJsSerializer[A](implicit ev: JsSerializer[A]): JsSerializer[collection.Map[String, A]] =
+    new JsSerializer[collection.Map[String, A]] {
+      def apply(a: collection.Map[String, A]) = JsAnonObjDecl(a.map{ case (k, v) => (k, ev.apply(v)) }.toList)
+    }
+
+  implicit def funcJsSerializer[A](implicit ev: JsSerializer[A]): JsSerializer[() => A] =
+    new JsSerializer[() => A] {
+      def apply(a: () => A) = ev.apply(a())
+    }
+
   implicit class ToJsExpr[A](a: A)(implicit ev: JsSerializer[A]) {
     def toJs: JsExpr = ev.apply(a)
   }
