@@ -8,8 +8,8 @@ object BuildSettings {
   val buildSettings = Defaults.defaultSettings ++ Seq(
     organization := "org.jscala",
     version := "0.4-SNAPSHOT",
-    scalaVersion := "2.11.0",
-    crossScalaVersions := Seq("2.10.4", "2.11.0"),
+    scalaVersion := "2.11.2",
+    crossScalaVersions := Seq("2.10.4","2.11.0", "2.11.2"),
     resolvers += Resolver.sonatypeRepo("snapshots"),
     credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
     publishTo <<= version((v: String) => Some( if (v.trim endsWith "SNAPSHOT") ossSnapshots else ossStaging)),
@@ -17,7 +17,7 @@ object BuildSettings {
     publishArtifact in Test := false,
     pomIncludeRepository := (_ => false),
     pomExtra := extraPom,
-    addCompilerPlugin("org.scalamacros" % "paradise" % "2.0.0" cross CrossVersion.full),
+    addCompilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full),
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
