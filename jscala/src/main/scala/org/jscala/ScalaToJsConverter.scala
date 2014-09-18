@@ -10,16 +10,17 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
   import c.universe._
 
   private val traits = collection.mutable.HashMap[String, List[Tree]]()
+  private val ints = Set("Byte", "Short", "Int", "Long", "Float", "Double")
 
   def convert(tree: Tree): Tree = {
     if (debug) println(tree)
     if (debug) println(tree.raw)
 
     lazy val jsSelect: ToExpr[JsExpr] = {
-      // org.scala.package.$ident => $ident
+      // org.jscala.package.$ident => $ident
       case Select(Select(Select(Ident(Name("org")), Name("jscala")), Name("package")), Name(name)) =>
         q"org.jscala.JsIdent($name)"
-      // org.scala.$ident => $ident
+      // org.jscala.$ident => $ident
       case Select(Select(Ident(Name("org")), Name("jscala")), Name(name)) =>
         q"org.jscala.JsIdent($name)"
       // objectname.$ident => $ident
@@ -194,8 +195,25 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
         q"org.jscala.JsArray($params)"
     }
 
+    def typeConverter(tpe: Tree): String = {
+      val or = tpe.asInstanceOf[TypeTree].original
+      val ident = or match {
+        case Select(Select(This(TypeName("scala")), Name("Predef")), Name("String")) => "String"
+        case Select(Ident(Name("scala")), Name(int)) if ints.contains(int)  => "Number"
+        case Select(q, Name(nm)) => nm
+        case Ident(Name(nm)) => nm
+        case t => c.abort(c.enclosingPosition, s"Unknown type: ${show(t)}: ${showRaw(t)}")
+      }
+      ident
+    }
+
+
     lazy val jsGlobalFuncsExpr: ToExpr[JsExpr] = {
       case Select(Apply(path, List(arg)), Name("jstr")) => jsExprOrDie(arg)
+      case Apply(Select(Apply(jsAnyOps, List(expr)), Name("instanceof")), List(Literal(Constant(tpname: String)))) if jsAnyOps.is("org.jscala.package.JsAnyOps") =>
+        q"""org.jscala.JsBinOp("instanceof", ${jsExprOrDie(expr)}, org.jscala.JsIdent($tpname))"""
+      case TypeApply(Select(Apply(jsAnyOps, List(expr)), Name("instanceof")), List(tpe)) if jsAnyOps.is("org.jscala.package.JsAnyOps") =>
+        q"""org.jscala.JsBinOp("instanceof", ${jsExprOrDie(expr)}, org.jscala.JsIdent(${typeConverter(tpe)}))"""
       case TypeApply(Select(Apply(jsAnyOps, List(expr)), Name("as")), _) if jsAnyOps.is("org.jscala.package.JsAnyOps") =>
         jsExprOrDie(expr)
       case Select(expr, Name("toDouble")) => jsExprOrDie(expr)

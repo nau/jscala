@@ -42,6 +42,8 @@ package object jscala {
 
   implicit class JsAnyOps(a: Any) {
     def as[A] = a.asInstanceOf[A]
+    def instanceof[A]: Boolean = sys.error("Can't be used on JVM side")
+    def instanceof(name: String): Boolean = sys.error("Can't be used on JVM side")
   }
 
   implicit def implicitString2JString(s: String): JString = new JString(s)
@@ -115,6 +117,7 @@ package object jscala {
   val Infinity = Double.PositiveInfinity
   val NaN = Double.NaN
   val undefined: AnyRef = null
+
   // Javascript Global Functions
   def decodeURI(uri: String): JString = null
   def decodeURIComponent(uri: String): JString = null

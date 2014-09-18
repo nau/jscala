@@ -320,6 +320,15 @@ class ScalaToJsConverterTest extends FunSuite {
     assert(ast4 === JsNew(JsCall(JsIdent("A"), Nil)))
   }
 
+  test("instanceof operator") {
+    assert(js("".instanceof[String]) === JsBinOp("instanceof", "".toJs, JsIdent("String")))
+    assert(js("".instanceof[Int]) === JsBinOp("instanceof", "".toJs, JsIdent("Number")))
+    class Test(val a: String)
+    assert(js("".instanceof[Test]) === JsBinOp("instanceof", "".toJs, JsIdent("Test")))
+    // instanceof(tpname) form
+    assert(js("".instanceof("String")) === JsBinOp("instanceof", "".toJs, JsIdent("String")))
+  }
+
   test("include") {
     val ast = javascript { include(javascript(1 + 2)) }
     assert(ast.eval() === 3.0)
