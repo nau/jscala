@@ -1,6 +1,8 @@
 JScala
 ======
 
+[![Join the chat at https://gitter.im/nau/jscala](https://badges.gitter.im/nau/jscala.svg)](https://gitter.im/nau/jscala?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Scala macro that produces JavaScript from Scala code. Let it be type safe!
 
 [![Build Status](https://secure.travis-ci.org/nau/jscala.png)](http://travis-ci.org/nau/jscala)
