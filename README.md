@@ -5,6 +5,8 @@ Scala macro that produces JavaScript from Scala code. Let it be type safe!
 
 [![Build Status](https://secure.travis-ci.org/nau/jscala.png)](http://travis-ci.org/nau/jscala)
 
+[![Gitter](https://badges.gitter.im/nau/jscala.svg)](https://gitter.im/nau/jscala?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+
 Supported Features:
 ===================
 * Variable definitions, basic unary and binary operations
