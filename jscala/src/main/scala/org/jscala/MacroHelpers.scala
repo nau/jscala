@@ -1,14 +1,14 @@
 package org.jscala
 
-import scala.reflect.macros.Context
 import scala.collection.generic.{MapFactory, SeqFactory}
+import scala.reflect.macros.blackbox
 
 /**
  * Author: Alexander Nemish
  * Date: 10/25/13
  * Time: 10:35 PM
  */
-trait MacroHelpers[C <: Context] {
+trait MacroHelpers[C <: blackbox.Context] {
   val c: C
   import c.universe._
   type PFT[A] = PartialFunction[Tree, A]
@@ -16,7 +16,7 @@ trait MacroHelpers[C <: Context] {
 
   implicit class TreeHelper(tree: Tree) {
     def is(p: String): Boolean = tree.equalsStructure(select(p)) || tree.equalsStructure(select(p, s => This(TypeName(s))))
-    lazy val isArrow: Boolean = is("scala.Predef.any2ArrowAssoc") /*2.10.x*/ || is("scala.Predef.ArrowAssoc") /*2.11.x*/
+    lazy val isArrow: Boolean = is("scala.Predef.ArrowAssoc") /*2.11.x*/
     def raw: String = showRaw(tree)
     def isNum = tree.tpe.widen weak_<:< typeOf[Long]
   }
@@ -27,16 +27,6 @@ trait MacroHelpers[C <: Context] {
 
   object Name {
     def unapply(name: Name): Option[String] = Some(name.decodedName.toString)
-  }
-
-  object TermName {
-    def apply(s: String) = newTermName(s)
-    def unapply(name: TermName): Option[String] = Some(name.toString)
-  }
-
-  object TypeName {
-    def apply(s: String) = newTypeName(s)
-    def unapply(name: TypeName): Option[String] = Some(name.toString)
   }
 
   protected lazy val seqFactorySym = c.typeOf[SeqFactory[Seq]].typeSymbol

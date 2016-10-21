@@ -1,14 +1,15 @@
 package org.jscala
 
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 import scala.collection.generic.{MapFactory, SeqFactory}
+import scala.reflect.macros.blackbox
 
 /**
  * Author: Alexander Nemish
  * Date: 10/25/13
  * Time: 10:50 PM
  */
-trait JsBasis[C <: Context] extends MacroHelpers[C] {
+trait JsBasis[C <: blackbox.Context] extends MacroHelpers[C] {
   import c.universe._
 
   protected val unaryOps = Seq("+", "-", "!")

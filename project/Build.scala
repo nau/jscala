@@ -9,7 +9,6 @@ object BuildSettings {
     organization := "org.jscala",
     version := "0.5-SNAPSHOT",
     scalaVersion := "2.11.8",
-    crossScalaVersions := Seq("2.10.6", "2.11.8"),
     resolvers += Resolver.sonatypeRepo("snapshots"),
     credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
     publishTo <<= version((v: String) => Some( if (v.trim endsWith "SNAPSHOT") ossSnapshots else ossStaging)),
@@ -26,17 +25,7 @@ object BuildSettings {
 //      "-verbose",
       "-language:_"
 	  ),
-    initialize ~= { _ => sys.props("scalac.patmat.analysisBudget") = "10" },
-    libraryDependencies := {
-      CrossVersion.partialVersion(scalaVersion.value) match {
-        // if scala 2.11+ is used, quasiquotes are merged into scala-reflect
-        case Some((2, scalaMajor)) if scalaMajor >= 11 => libraryDependencies.value
-        // in Scala 2.10, quasiquotes are provided by macro paradise
-        case Some((2, 10)) =>
-          libraryDependencies.value ++ Seq(
-            "org.scalamacros" %% "quasiquotes" % "2.0.0" cross CrossVersion.binary)
-      }
-    }
+    initialize ~= { _ => sys.props("scalac.patmat.analysisBudget") = "10" }
   )
 
   def extraPom =

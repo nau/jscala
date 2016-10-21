@@ -49,7 +49,7 @@ object MacroAnnotations {
     var dbg = false
     var json = true
     c.macroApplication match {
-      case Apply(Select(Apply(Select(New(Ident(js)), nme.CONSTRUCTOR), args), _), _) if js.decodedName.toString == "Javascript" =>
+      case Apply(Select(Apply(Select(New(Ident(js)), termNames.CONSTRUCTOR), args), _), _) if js.decodedName.toString == "Javascript" =>
         args match {
           case List(Literal(Constant(js: Boolean))) => json = js
           case List(Literal(Constant(js: Boolean)), Literal(Constant(db: Boolean))) => json = js; dbg = db

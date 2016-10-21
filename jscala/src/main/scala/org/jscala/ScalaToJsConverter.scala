@@ -2,7 +2,7 @@ package org.jscala
 
 import language.implicitConversions
 import language.experimental.macros
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 import scala.collection.generic.{SeqFactory, MapFactory}
 import scala.reflect.internal.Flags
 
@@ -168,11 +168,11 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       case Apply(Ident(Name("Array")), args) =>
         val params = listToExpr(args map jsExprOrDie)
         q"org.jscala.JsArray($params)"
-      case Apply(Select(New(AppliedTypeTree(Ident(TypeName("Array")), _)), ctor), List(Literal(Constant(_)))) if ctor == nme.CONSTRUCTOR =>
+      case Apply(Select(New(AppliedTypeTree(Ident(TypeName("Array")), _)), ctor), List(Literal(Constant(_)))) if ctor == termNames.CONSTRUCTOR =>
         q"org.jscala.JsArray(Nil)"
       // new Array[Int](256)
       case Apply(Select(a@New(t@TypeTree()), ctor), List(Literal(Constant(_))))
-        if ctor == nme.CONSTRUCTOR && t.original.isInstanceOf[AppliedTypeTree @unchecked] && t.original.asInstanceOf[AppliedTypeTree].tpt.equalsStructure(Select(Ident(TermName("scala")), TypeName("Array"))) =>
+        if ctor == termNames.CONSTRUCTOR && t.original.isInstanceOf[AppliedTypeTree @unchecked] && t.original.asInstanceOf[AppliedTypeTree].tpt.equalsStructure(Select(Ident(TermName("scala")), TypeName("Array"))) =>
         q"org.jscala.JsArray(Nil)"
       case Apply(Select(a@New(t@TypeTree()), ctor), List(Literal(Constant(_)))) =>
         q"org.jscala.JsArray(Nil)"
@@ -403,7 +403,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
           q"org.jscala.JsCase($consts, $stmt)"
       }
       val df = (cases collect {
-        case CaseDef(Ident(nme.WILDCARD), EmptyTree, body) => q"Some(org.jscala.JsDefault(${jsStmtOrDie(f(body))}))"
+        case CaseDef(Ident(termNames.WILDCARD), EmptyTree, body) => q"Some(org.jscala.JsDefault(${jsStmtOrDie(f(body))}))"
       }).headOption.getOrElse(q"None")
       val css = listToExpr(cs)
       q"org.jscala.JsSwitch(${jsExprOrDie(expr)}, $css, $df)"
@@ -414,7 +414,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     }
 
     def eligibleDef(f: DefDef) = {
-      f.name != nme.CONSTRUCTOR && f.name.decodedName.toString != "$init$" && !f.mods.hasFlag(Flags.ACCESSOR.toLong.asInstanceOf[FlagSet] | Flag.DEFERRED)
+      f.name != termNames.CONSTRUCTOR && f.name.decodedName.toString != "$init$" && !f.mods.hasFlag(Flags.ACCESSOR.toLong.asInstanceOf[FlagSet] | Flag.DEFERRED)
     }
 
     lazy val objectFields: PFT[(String, Tree)] = {
@@ -431,7 +431,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
         q"org.jscala.JsUnit"
       case cd@ClassDef(_, clsName, _, t@Template(base, _, body)) =>
         val ctor = body.collect {
-          case f@DefDef(mods, n, _, argss, _, Block(stats, _)) if n == nme.CONSTRUCTOR =>
+          case f@DefDef(mods, n, _, argss, _, Block(stats, _)) if n == termNames.CONSTRUCTOR =>
             val a = argss.flatten.map(v => v.name.decodedName.toString)
             a
         }

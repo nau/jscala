@@ -1,13 +1,12 @@
 package org.jscala
 
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox
 
 /**
  * @author Alexander Nemish
  */
-class JsonConverter[C <: Context](val c: C, val debug: Boolean) extends JsBasis[C] {
+class JsonConverter[C <: blackbox.Context](val c: C, val debug: Boolean) extends JsBasis[C] {
   import c.universe._
-  import compat._
 
   private def isPrim(tp: Type) = {
     tp =:= typeOf[String] || tp =:= typeOf[Boolean] || (tp weak_<:< typeOf[Double])
@@ -78,7 +77,7 @@ class JsonConverter[C <: Context](val c: C, val debug: Boolean) extends JsBasis[
       else if (tp.baseClasses.contains(mapSym)) {
         val TypeRef(_, _, List(key, arg)) = tp
         val func = readField(Ident(TermName("v")), arg)
-        val col = mapping.get(tp.typeSymbol.fullName).getOrElse(c.abort(c.enclosingPosition, s"Can't find mapping for type $tp"))
+        val col = mapping.getOrElse(tp.typeSymbol.fullName, c.abort(c.enclosingPosition, s"Can't find mapping for type $tp"))
         q"""$col ++ ($jsonObj.asInstanceOf[Map[String, Any]].map{case (k, v) => k -> $func})"""
       } else if (isArray(tp)) {
         val TypeRef(_, _, List(arg)) = tp
@@ -86,7 +85,7 @@ class JsonConverter[C <: Context](val c: C, val debug: Boolean) extends JsBasis[
         val tree = if (tp.typeSymbol == arraySym)
           q"""scala.Array[$arg]($jsonObj.asInstanceOf[List[Any]].map(e => $func).toSeq:_*)"""
         else if (tp.baseClasses.contains(traversableSym)) {
-          val col = mapping.get(tp.typeSymbol.fullName).getOrElse(c.abort(c.enclosingPosition, s"Can't find mapping for type $tp"))
+          val col = mapping.getOrElse(tp.typeSymbol.fullName, c.abort(c.enclosingPosition, s"Can't find mapping for type $tp"))
           q"""$col ++ ($jsonObj.asInstanceOf[List[Any]].map(e => $func))"""
         } else c.abort(c.enclosingPosition, s"Unsupported collection type $tp")
         tree
@@ -98,7 +97,7 @@ class JsonConverter[C <: Context](val c: C, val debug: Boolean) extends JsBasis[
           if (ctorSig.isEmpty) List(List())
           else {
             val ctorSym = ctorSig.head._1.owner.asMethod
-            ctorSym.paramss.map(_.map(f => {
+            ctorSym.paramLists.map(_.map(f => {
               readField(q"$jsonObj.asInstanceOf[Map[String, Any]](${f.name.decodedName.toString})", ctorSig(f))
             }))
           }
@@ -125,8 +124,8 @@ class JsonConverter[C <: Context](val c: C, val debug: Boolean) extends JsBasis[
     def field = accessor.map(_.accessed.asTerm)
     def getter = accessor.map(_.getter).flatMap(sym => if (sym != NoSymbol) Some(sym) else None)
     def setter = accessor.map(_.setter).flatMap(sym => if (sym != NoSymbol) Some(sym) else None)
-    def isParam = param.map(_.owner.name == nme.CONSTRUCTOR).getOrElse(false)
-    def isPublic = accessor.map(_.isPublic).getOrElse(false)
+    def isParam = param.exists(_.owner.name == termNames.CONSTRUCTOR)
+    def isPublic = accessor.exists(_.isPublic)
 
     // this part is interesting to picklers
     def hasGetter = getter.isDefined
@@ -141,19 +140,19 @@ class JsonConverter[C <: Context](val c: C, val debug: Boolean) extends JsBasis[
   private type Q = List[FieldIR]
 
   private def fields(tp: Type): Q = {
-    val ctor = tp.declaration(nme.CONSTRUCTOR) match {
+    val ctor = tp.decl(termNames.CONSTRUCTOR) match {
       case overloaded: TermSymbol => overloaded.alternatives.head.asMethod // NOTE: primary ctor is always the first in the list
       case primaryCtor: MethodSymbol => primaryCtor
       case NoSymbol => NoSymbol
     }
-    val ctorParams = if (ctor != NoSymbol) ctor.asMethod.paramss.flatten.map(_.asTerm) else Nil
-    val allAccessors = tp.declarations.collect{ case meth: MethodSymbol if meth.isAccessor || meth.isParamAccessor => meth }
+    val ctorParams = if (ctor != NoSymbol) ctor.asMethod.paramLists.flatten.map(_.asTerm) else Nil
+    val allAccessors = tp.decls.collect{ case meth: MethodSymbol if meth.isAccessor || meth.isParamAccessor => meth }
     val (paramAccessors, otherAccessors) = allAccessors.partition(_.isParamAccessor)
 
     def mkFieldIR(sym: TermSymbol, param: Option[TermSymbol], accessor: Option[MethodSymbol]) = {
       val (quantified, rawTp) = tp match { case ExistentialType(quantified, tpe) => (quantified, tpe); case tpe => (Nil, tpe) }
       val rawSymTp = accessor.getOrElse(sym).typeSignatureIn(rawTp) match { case NullaryMethodType(tpe) => tpe; case tpe => tpe }
-      val symTp = existentialAbstraction(quantified, rawSymTp)
+      val symTp = internal.existentialAbstraction(quantified, rawSymTp)
       FieldIR(sym.name.toString.trim, symTp, param, accessor)
     }
 
