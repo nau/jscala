@@ -105,17 +105,17 @@ How To Use
 
 In your build.sbt add
 
-    scalaVersion := "2.10.3"
+    scalaVersion := "2.10.6" // or "2.11.8"
 
-    libraryDependencies += "org.jscala" %% "jscala-macros" % "0.3"
+    libraryDependencies += "org.jscala" %% "jscala-macros" % "0.4"
     
 If you want to try the latest snapshot:
 
-    scalaVersion := "2.10.3"
+    scalaVersion := "2.11.8"
 
     resolvers += Resolver.sonatypeRepo("snapshots")
 
-    libraryDependencies += "org.jscala" %% "jscala-macros" % "0.4-SNAPSHOT"
+    libraryDependencies += "org.jscala" %% "jscala-macros" % "0.5-SNAPSHOT"
 
 In your code
 
@@ -133,11 +133,11 @@ How To Try Macro Annotations
 ============================
 In your build.sbt add
 
-    scalaVersion := "2.10.3"
+    scalaVersion := "2.11.8"
 
     resolvers += Resolver.sonatypeRepo("snapshots")
     
-    addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.3-RC2" % "2.0.0-SNAPSHOT")
+    addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
 
     libraryDependencies += "org.jscala" %% "jscala-macros" % "0.3"
     
