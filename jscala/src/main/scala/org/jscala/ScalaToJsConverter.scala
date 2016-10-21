@@ -377,7 +377,8 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     }
 
     lazy val jsTry: ToExpr[JsTry] = {
-      case Try(body, catchBlock, finBody) =>
+      case q"try $body catch { case ..$catchBlock } finally $finBody" =>
+//      case Try(body, catchBlock, finBody) =>
         val ctch = catchBlock match {
           case Nil => q"None"
           case List(CaseDef(Bind(pat, _), EmptyTree, catchBody)) =>
