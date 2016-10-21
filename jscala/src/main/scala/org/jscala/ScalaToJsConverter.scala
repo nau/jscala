@@ -46,7 +46,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     }
 
     lazy val jsBinOp: ToExpr[JsBinOp] = {
-      case Apply(Select(q, n), List(rhs)) if encodedBinOpsMap.contains(n) =>
+      case q"$q.$n($rhs)" if encodedBinOpsMap.contains(n) =>
         val op = encodedBinOpsMap(n)
         val opExpr = q"$op"
         val qExpr = jsExprOrDie(q)
