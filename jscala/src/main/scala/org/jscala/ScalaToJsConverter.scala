@@ -30,7 +30,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     }
 
     lazy val jsUnaryOp: ToExpr[JsUnOp] = {
-      case Select(q, n) if encodedUnaryOpsMap.contains(n) =>
+      case q"$q.$n" if encodedUnaryOpsMap.contains(n) =>
         val op = encodedUnaryOpsMap(n)
         q"org.jscala.JsUnOp($op, ${jsExprOrDie(q)})"
     }
