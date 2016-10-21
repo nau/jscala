@@ -298,7 +298,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     }
 
     lazy val jsWhileStmt: ToExpr[JsWhile] = {
-      case LabelDef(termName, Nil, If(cond, Block(List(body), _), _)) if termName.encoded.startsWith("while$") =>
+      case q"while ($cond) $body" =>
         val condJsExpr = jsExprOrDie(cond)
         val bodyJsStmt = jsStmtOrDie(body)
         q"org.jscala.JsWhile($condJsExpr, $bodyJsStmt)"
