@@ -282,7 +282,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     }
 
     lazy val jsIfStmt: ToExpr[JsIf] = {
-      case If(cond, thenp, elsep) =>
+      case q"if ($cond) $thenp else $elsep" =>
         val condJsExpr = jsExprOrDie(cond)
         val thenJsExpr = jsStmtOrDie(thenp)
         val elseJsStmt = if (isUnit(elsep)) q"None" else q"Some(${jsStmtOrDie(elsep)})"
@@ -290,7 +290,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     }
 
     lazy val jsTernaryExpr: ToExpr[JsTernary] = {
-      case If(cond, thenp, elsep) if !thenp.tpe.=:=(typeOf[Unit]) && !isUnit(elsep) && jsExpr.isDefinedAt(thenp) && jsExpr.isDefinedAt(elsep) =>
+      case 	q"if ($cond) $thenp else $elsep" if !thenp.tpe.=:=(typeOf[Unit]) && !isUnit(elsep) && jsExpr.isDefinedAt(thenp) && jsExpr.isDefinedAt(elsep) =>
         val condJsExpr = jsExprOrDie(cond)
         val thenJsExpr = jsExprOrDie(thenp)
         val elseExpr = jsExprOrDie(elsep)
