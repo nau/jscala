@@ -7,7 +7,7 @@ object BuildSettings {
   val ossStaging   = "Sonatype OSS Staging" at "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
   val buildSettings = Defaults.coreDefaultSettings ++ Seq(
     organization := "org.jscala",
-    version := "0.4-SNAPSHOT",
+    version := "0.5-SNAPSHOT",
     scalaVersion := "2.11.8",
     crossScalaVersions := Seq("2.10.6", "2.11.8"),
     resolvers += Resolver.sonatypeRepo("snapshots"),
