@@ -5,11 +5,11 @@ import sbt.Keys._
 object BuildSettings {
   val ossSnapshots = "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
   val ossStaging   = "Sonatype OSS Staging" at "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
-  val buildSettings = Defaults.defaultSettings ++ Seq(
+  val buildSettings = Defaults.coreDefaultSettings ++ Seq(
     organization := "org.jscala",
     version := "0.4-SNAPSHOT",
-    scalaVersion := "2.11.2",
-    crossScalaVersions := Seq("2.10.4","2.11.0", "2.11.2"),
+    scalaVersion := "2.11.8",
+    crossScalaVersions := Seq("2.10.6", "2.11.8"),
     resolvers += Resolver.sonatypeRepo("snapshots"),
     credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
     publishTo <<= version((v: String) => Some( if (v.trim endsWith "SNAPSHOT") ossSnapshots else ossStaging)),
@@ -17,7 +17,7 @@ object BuildSettings {
     publishArtifact in Test := false,
     pomIncludeRepository := (_ => false),
     pomExtra := extraPom,
-    addCompilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full),
+    addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
@@ -84,7 +84,7 @@ object JScalaBuild extends Build {
     file("jscala"),
     settings = buildSettings ++ Seq(
       libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ % "provided"),
-      libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7" % "provided"
+      libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.8" % "provided"
     )
   )
 
@@ -113,8 +113,8 @@ object JScalaBuild extends Build {
     file("jscala-examples"),
     settings = buildSettings ++ Seq(
       tetrisTask,
-      libraryDependencies += "org.scalatest" %% "scalatest" % "2.1.3" % "test",
-      libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.7",
+      libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test",
+      libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.8",
       sources in Test <<= (sources in Test, scalaVersion) map { (ss, sv) =>
         if (sv.startsWith("2.11")) ss
         else ss.filter { (f: java.io.File) => !f.getCanonicalPath.endsWith("TypescriptedTest.scala") }
