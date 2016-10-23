@@ -76,13 +76,13 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       q"org.jscala.JsAnonObjDecl($params)"
     }
 
-    lazy val jsMapExpr: ToExpr[JsExpr] = {
-      case tree@Apply(Select(path, TermName("apply")), args) if tree.isCaseClass && !tree.tpe.typeSymbol.fullName.startsWith("org.jscala") =>
-        println(s"PIZDEC: $path, ${path.tpe}, ${tree.isCaseClass}")
-        val params = listToExpr(tree.tpe.members.collect {
-          case m: MethodSymbol if m.isCaseAccessor => m
-        }.toList.zip(args).map { case (m, a) => q"(${m.name.decodedName.toString}, ${jsExprOrDie(a)})" })
+    lazy val jsCaseClassApply: ToExpr[JsAnonObjDecl] = {
+      case tree@Apply(Select(path, TermName("apply")), args) if tree.isCaseClass && !tree.tpe.typeSymbol.fullName.startsWith("org.jscala.") =>
+        val params = listToExpr(tree.caseMembers.zip(args).map { case (m, a) => q"(${m.name.decodedName.toString}, ${jsExprOrDie(a)})" })
         q"org.jscala.JsAnonObjDecl($params)"
+    }
+
+    lazy val jsMapExpr: ToExpr[JsExpr] = jsCaseClassApply orElse {
       case Apply(TypeApply(Select(path, Name("apply")), _), args) if path.tpe.baseClasses.contains(mapFactorySym) =>
         genMap(args)
       case Apply(Select(path, Name("apply")), List(index)) if path.tpe.baseClasses.contains(mapSym) =>
@@ -471,6 +471,21 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
         q"org.jscala.JsAnonObjDecl($params)"
     }
 
+    /** Case class creation, using named arguments in wrong order
+      * {
+      * <artifact> val x$2: Int = 2;
+      * <artifact> val x$3: String = "nau";
+      * User.apply(x$3, x$2)
+      * }
+      */
+    lazy val jsCaseClassNamedArgs: ToExpr[JsExpr] = {
+      case Block(valdefs, ap@Apply(expr, params)) if jsCaseClassApply.isDefinedAt(ap) =>
+        val args = valdefs.map { case ValDef(_, TermName(n), _, init) => n -> init }.toMap
+        val orderedParams = params.map { case Ident(TermName(i)) => args(i) }
+        val tree1 = c.typecheck(Apply(expr, orderedParams))
+        jsCaseClassApply(tree1)
+    }
+
     lazy val jsReturn1: ToExpr[JsStmt] = {
       case Return(expr) => q"org.jscala.JsReturn(${jsExprOrDie(expr)})"
     }
@@ -512,7 +527,8 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       jsThis,
       jsAnonObjDecl,
       jsThrowExpr,
-      jsTernaryExpr
+      jsTernaryExpr,
+      jsCaseClassNamedArgs
     ) reduceLeft( _ orElse _)
 
     lazy val jsExprOrDie: ToExpr[JsExpr] = jsExpr orElse die("Unsupported syntax")

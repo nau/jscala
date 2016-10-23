@@ -18,8 +18,11 @@ trait MacroHelpers[C <: blackbox.Context] {
     def is(p: String): Boolean = tree.equalsStructure(select(p)) || tree.equalsStructure(select(p, s => This(TypeName(s))))
     lazy val isArrow: Boolean = is("scala.Predef.ArrowAssoc") /*2.11.x*/
     def raw: String = showRaw(tree)
-    def isNum = tree.tpe.widen weak_<:< typeOf[Long]
-    def isCaseClass = tree.tpe.typeSymbol.isClass && tree.tpe.typeSymbol.asClass.isCaseClass
+    def isNum: Boolean = tree.tpe.widen weak_<:< typeOf[Long]
+    def isCaseClass: Boolean = tree.tpe.typeSymbol.isClass && tree.tpe.typeSymbol.asClass.isCaseClass
+    def caseMembers: List[c.universe.MethodSymbol] = tree.tpe.members.collect {
+      case m: MethodSymbol if m.isCaseAccessor => m
+    }.toList
   }
 
   implicit class NameHelper(name: Name) {

@@ -120,7 +120,7 @@ object JScalaExample {
     greeter.hello(u1) // prints "Hello, Alex"
     val json = Json.stringify(Json.toJson(u1))
     val main = javascript {
-        val u = User("nau", 2)
+        val u = User(id = 2, name = "nau")
         // read User from json string generated above
         val u1Json = eval(s"(${include(json)})").as[User]
         val t = new Greeter()
