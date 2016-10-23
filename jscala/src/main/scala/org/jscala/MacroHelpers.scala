@@ -20,9 +20,9 @@ trait MacroHelpers[C <: blackbox.Context] {
     def raw: String = showRaw(tree)
     def isNum: Boolean = tree.tpe.widen weak_<:< typeOf[Long]
     def isCaseClass: Boolean = tree.tpe.typeSymbol.isClass && tree.tpe.typeSymbol.asClass.isCaseClass
-    def caseMembers: List[c.universe.MethodSymbol] = tree.tpe.members.collect {
+    def caseMembers: List[c.universe.MethodSymbol] = tree.tpe.members.sorted.collect {
       case m: MethodSymbol if m.isCaseAccessor => m
-    }.toList
+    }
   }
 
   implicit class NameHelper(name: Name) {

@@ -2,7 +2,7 @@ package org.jscala
 
 object JavascriptPrinter {
   private[this] val substitutions = Map("\\\"".r -> "\\\\\"", "\\n".r -> "\\\\n", "\\r".r -> "\\\\r", "\\t".r -> "\\\\t")
-  private[this] def simplify(ast: JsAst): JsAst = ast match {
+  def simplify(ast: JsAst): JsAst = ast match {
     case JsBlock(stmts) => JsBlock(stmts.filter(_ != JsUnit))
     case JsCase(const, JsBlock(List(stmt))) => JsCase(const, stmt)
     case JsDefault(JsBlock(List(stmt))) => JsDefault(stmt)

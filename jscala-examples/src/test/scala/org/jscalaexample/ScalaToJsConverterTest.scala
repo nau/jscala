@@ -371,6 +371,14 @@ class ScalaToJsConverterTest extends FunSuite {
     }
     val stmt = JsBinOp("=", JsAccess(JsIdent("a"), "field".toJs), JsAccess(JsIdent("a"), "field2".toJs))
     assert(ast1 === JsBlock(List(JsVarDef("a", JsAnonObjDecl(fields)), stmt)))
+
+    // case class
+    val ast2 = javascript {
+      case class Test(n: String, id: Int)
+      val t = Test("nau", 2)
+      t.n
+    }
+    println(JavascriptPrinter.simplify(ast2) === JsBlock(List(JsVarDef("t", JsAnonObjDecl(List(("n", "nau".toJs), ("id", 2.toJs)))), JsSelect(JsIdent("t"), "n"))))
   }
 
   test("Switch declaration") {

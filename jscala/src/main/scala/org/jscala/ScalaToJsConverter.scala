@@ -441,6 +441,10 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
         // Remember trait AST to embed its definitions in concrete class for simplicity
         traits(cd.symbol.fullName) = body
         q"org.jscala.JsUnit"
+      case cd@ClassDef(mods, clsName, _, Template(_, _, body)) if mods.hasFlag(Flag.CASE) =>
+        q"org.jscala.JsUnit"
+      case ModuleDef(_, name, _) =>
+        q"org.jscala.JsUnit"
       case cd@ClassDef(_, clsName, _, t@Template(base, _, body)) =>
         val ctor = body.collect {
           case f@DefDef(mods, n, _, argss, _, Block(stats, _)) if n == termNames.CONSTRUCTOR =>

@@ -88,16 +88,16 @@ object Tetris {
       //
       //-------------------------------------------------------------------------
 
-      class Block(val id: String, val size: Int, val blocks: Seq[Int], val color: String)
+      case class Block(id: String, size: Int, blocks: Seq[Int], color: String)
       class Piece(val `type`: Block, var dir: Int, var x: Int, var y: Int )
 
-      val i = new Block("i", 4, Seq(0x0F00, 0x2222, 0x00F0, 0x4444), "cyan")
-      val j = new Block("j", 3, Seq(0x44C0, 0x8E00, 0x6440, 0x0E20),  "blue"   )
-      val l = new Block("l", 3, Seq(0x4460, 0x0E80, 0xC440, 0x2E00), "orange" )
-      val o = new Block("o", 2, Seq(0xCC00, 0xCC00, 0xCC00, 0xCC00), "yellow" )
-      val s = new Block("s", 3, Seq(0x06C0, 0x8C40, 0x6C00, 0x4620), "green"  )
-      val t = new Block("t", 3, Seq(0x0E40, 0x4C40, 0x4E00, 0x4640), "purple" )
-      val z = new Block("z", 3, Seq(0x0C60, 0x4C80, 0xC600, 0x2640), "red"    )
+      val i = Block("i", 4, Seq(0x0F00, 0x2222, 0x00F0, 0x4444), "cyan")
+      val j = Block("j", 3, Seq(0x44C0, 0x8E00, 0x6440, 0x0E20),  "blue"   )
+      val l = Block("l", 3, Seq(0x4460, 0x0E80, 0xC440, 0x2E00), "orange" )
+      val o = Block("o", 2, Seq(0xCC00, 0xCC00, 0xCC00, 0xCC00), "yellow" )
+      val s = Block("s", 3, Seq(0x06C0, 0x8C40, 0x6C00, 0x4620), "green"  )
+      val t = Block("t", 3, Seq(0x0E40, 0x4C40, 0x4E00, 0x4640), "purple" )
+      val z = Block("z", 3, Seq(0x0C60, 0x4C80, 0xC600, 0x2640), "red"    )
 
       //------------------------------------------------
       // do the bit manipulation and iterate through each
