@@ -62,15 +62,14 @@ object JavascriptPrinter {
                                                    s"try { $b \n} $c \n $f"
       case JsCatch(JsIdent(ident), body)        => s"catch($ident) {\n${p2(body)}\n}"
       case JsFor(init, check, update, body)     =>
-        val in = init.map(p).mkString(", ")
+        val in = init.collect { case JsVarDef(ident, init) => s"$ident = ${p(init)}" }.mkString("var ", ", ", "")
         val upd = update.map(p).mkString(", ")
         s"for ($in; ${p(check)}; $upd) ${p(body)}"
       case JsForIn(JsIdent(ident), coll, body)  => s"for (var $ident in ${p(coll)}) ${p(body)}"
-      case JsVarDef(Nil)                        => sys.error("Var definition must have at least one identifier.")
-      case JsVarDef(idents)                     => "var " + idents.map {
-                                                      case (ident, JsUnit) => ident
-                                                      case (ident, init) => ident + " = " + p(init)
-                                                    }.mkString(", ")
+      case JsVarDef(ident, init)                     => s"var $ident" + (init match {
+                                                      case JsUnit => ""
+                                                      case init => " = " + p(init)
+                                                    })
       case JsFunDecl(ident, params, body)       => s"""function $ident(${params.mkString(", ")}) ${p(body)}"""
       case JsAnonFunDecl(params, body)          => s"""function (${params.mkString(", ")}) ${p3(body)}"""
       case JsAnonObjDecl(fields)                =>

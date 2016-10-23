@@ -100,7 +100,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       List(Function(List(ValDef(_, Name(index), _, _)), body))) if fn.is("scala.Predef.intWrapper") =>
         val forBody = jsStmtOrDie(body)
         val fromExpr = jsExprOrDie(from)
-        val init = q"varDef($index, $fromExpr)"
+        val init = q"org.jscala.JsVarDef($index, $fromExpr)"
         val check = if (n.decodedName.toString == "until")
           q"""org.jscala.JsBinOp("<", org.jscala.JsIdent($index), ${jsExprOrDie(endExpr)})"""
           else q"""org.jscala.JsBinOp("<=", org.jscala.JsIdent($index), ${jsExprOrDie(endExpr)})"""
@@ -127,22 +127,22 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
         val idx = s"${ident}Idx"
         val seq = q"org.jscala.JsIdent($coll)"
         val len = q"""org.jscala.JsSelect($seq, "length")"""
-        val init = q"org.jscala.JsVarDef(List($coll -> $collExpr, $idx -> org.jscala.JsNum(0, false), $ident -> org.jscala.JsAccess($seq, org.jscala.JsIdent($idx))))"
+        val init = q"List(org.jscala.JsVarDef($coll, $collExpr), org.jscala.JsVarDef($idx, org.jscala.JsNum(0, false)), org.jscala.JsVarDef($ident, org.jscala.JsAccess($seq, org.jscala.JsIdent($idx))))"
         val check = q"""org.jscala.JsBinOp("<", org.jscala.JsIdent($idx), $len)"""
         val update = q"""org.jscala.JsBinOp("=", org.jscala.JsIdent($ident), org.jscala.JsAccess(org.jscala.JsIdent($coll), org.jscala.JsUnOp("++", org.jscala.JsIdent($idx))))"""
         val forBody = jsStmtOrDie(body)
-        q"org.jscala.JsFor(List($init), $check, List($update), $forBody)"
+        q"org.jscala.JsFor($init, $check, List($update), $forBody)"
     }
 
     def forStmt(ident: String, coll: String, body: Tree) = {
       val idx = s"${ident}Idx"
       val seq = q"org.jscala.JsIdent($coll)"
       val len = q"""org.jscala.JsSelect($seq, "length")"""
-      val init = q"org.jscala.JsVarDef(List($idx -> org.jscala.JsNum(0, false), $ident -> org.jscala.JsAccess($seq, org.jscala.JsIdent($idx))))"
+      val init = q"List(org.jscala.JsVarDef($idx, org.jscala.JsNum(0, false)), org.jscala.JsVarDef($ident, org.jscala.JsAccess($seq, org.jscala.JsIdent($idx))))"
       val check = q"""org.jscala.JsBinOp("<", org.jscala.JsIdent($idx), $len)"""
       val update = q"""org.jscala.JsBinOp("=", org.jscala.JsIdent($ident), org.jscala.JsAccess(org.jscala.JsIdent($coll), org.jscala.JsUnOp("++", org.jscala.JsIdent($idx))))"""
       val forBody = jsStmtOrDie(body)
-      q"org.jscala.JsFor(List($init), $check, List($update), $forBody)"
+      q"org.jscala.JsFor($init, $check, List($update), $forBody)"
     }
 
     lazy val jsSeqExpr: ToExpr[JsExpr] = {
@@ -340,20 +340,16 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       case ValDef(_, name, _, rhs) =>
         val identifier = name.decodedName.toString
         if (jsTernaryExpr.isDefinedAt(rhs)) {
-          val idents = listToExpr(List(q"$identifier -> ${jsTernaryExpr(rhs)}"))
-          q"org.jscala.JsVarDef($idents)"
+          q"org.jscala.JsVarDef($identifier, ${jsTernaryExpr(rhs)})"
         } else {
           val funcs = Seq(jsIfExpr, jsMatchExpr).reduceLeft(_ orElse _) andThen { expr =>
-            val ident = listToExpr(List(q"$identifier -> org.jscala.JsUnit"))
-            q"org.jscala.JsStmts(List(org.jscala.JsVarDef($ident), $expr))"
+            q"org.jscala.JsStmts(List(org.jscala.JsVarDef($identifier, org.jscala.JsUnit), $expr))"
           }
           val x = name -> rhs
           funcs.applyOrElse(x, (t: (TermName, Tree)) => {
-            val ident = listToExpr(List(q"$identifier -> ${jsExprOrDie(rhs)}"))
-            q"org.jscala.JsVarDef($ident)"
+            q"org.jscala.JsVarDef($identifier, ${jsExprOrDie(rhs)})"
           })
         }
-
     }
 
     lazy val jsFunBody: ToExpr[JsBlock] = {

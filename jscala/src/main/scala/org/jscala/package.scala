@@ -92,27 +92,6 @@ package object jscala {
     def toJs: JsExpr = ev.apply(a)
   }
 
-  /**
-   * JavaScript variable definition.
-   *
-   * In JavaScript you can define multiple variable in single statement:
-   * {{{
-   *   var a=1, b, c="string"
-   * }}}
-   *
-   * JsVarDef case class represents above statements as List of ident -> init tuples.
-   * `varDef` creates a single variable definition with optional initialization:
-   * {{{
-   *   varDef("a")
-   * }}}
-   * translates to `JsVarDef(List("a" -> JsUnit))` and
-   * {{{
-   *   varDef("a", "string".toJs)
-   * }}}
-   * translates to `JsVarDef(List("a" -> JsString("string"))`
-   */
-  def varDef(ident: String, init: JsExpr = JsUnit) = JsVarDef(List(ident -> init))
-
   // Javascript top-level functions/constants
   val Infinity = Double.PositiveInfinity
   val NaN = Double.NaN

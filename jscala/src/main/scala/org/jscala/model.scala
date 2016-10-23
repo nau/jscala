@@ -56,7 +56,7 @@ sealed trait JsSwitchable extends JsStmt
 case class JsCase(const: List[JsExpr], body: JsStmt) extends JsSwitchable
 case class JsDefault(body: JsStmt) extends JsSwitchable
 case class JsSwitch(expr: JsExpr, cases: List[JsCase], default: Option[JsDefault]) extends JsStmt
-case class JsVarDef(idents: List[(String, JsExpr)]) extends JsStmt
+case class JsVarDef(ident: String, init: JsExpr) extends JsStmt
 case class JsFunDecl(ident: String, params: List[String], body: JsStmt) extends JsStmt
 case class JsObjDecl(name: String, constructor: JsFunDecl, fields: List[(String, JsExpr)]) extends JsStmt
 case class JsReturn(jsExpr: JsExpr) extends JsStmt

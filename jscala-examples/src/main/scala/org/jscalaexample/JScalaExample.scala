@@ -135,7 +135,7 @@ object JScalaExample {
 
 
   def astManipulation() {
-    val vardef = varDef("test", "Test".toJs).block
+    val vardef = JsVarDef("test", "Test".toJs).block
     val print = JsCall(JsIdent("print"), JsIdent("test") :: Nil)
     val ast = vardef ++ print
     ast.eval()

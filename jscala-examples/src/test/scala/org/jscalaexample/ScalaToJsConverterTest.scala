@@ -79,7 +79,7 @@ class ScalaToJsConverterTest extends FunSuite {
       }
     }
     val fields = List("field" -> 1.toJs, "func1" -> JsAnonFunDecl(List("i"), JsReturn(JsSelect(JsIdent("this"), "field")).block), "func2" -> JsAnonFunDecl(List("i"), JsReturn("string".toJs).block))
-    assert(ast === varDef("obj", JsAnonObjDecl(fields)).block)
+    assert(ast === JsVarDef("obj", JsAnonObjDecl(fields)).block)
     assert(js(obj.func2(1)) === JsCall(JsSelect(JsIdent("obj"), "func2"), List(1.toJs)))
     val lambda = JsAnonFunDecl(List("i"), JsReturn(JsCall(JsSelect(JsIdent("i"), "toString"), Nil)).block)
     assert(js(func3(i => i.toString)) === JsCall(JsIdent("func3"), List(lambda)))
@@ -135,8 +135,8 @@ class ScalaToJsConverterTest extends FunSuite {
     val jc = JsIdent("c")
     val jd = JsIdent("d")
     val jss = JsIdent("s")
-    assert(js { val a = 0 } === varDef("a", 0.toJs).block)
-    assert(js { val a = b + 2 } === varDef("a", JsBinOp("+", JsIdent("b"), 2.toJs)).block)
+    assert(js { val a = 0 } === JsVarDef("a", 0.toJs).block)
+    assert(js { val a = b + 2 } === JsVarDef("a", JsBinOp("+", JsIdent("b"), 2.toJs)).block)
     assert(js { if (a > 0) b } === JsIf(JsBinOp(">", ja, 0.toJs), jb, None))
     val stmt1 = JsCall(JsSelect(JsIdent("console"), "log"), List("".toJs))
     assert(js { if (a > 0) console.log("") else a } === JsIf(JsBinOp(">", ja, 0.toJs), stmt1, Some(ja)))
@@ -154,9 +154,9 @@ class ScalaToJsConverterTest extends FunSuite {
     assert(js { def func2 = 5 } === JsFunDecl("func2", Nil, JsBlock(List(JsReturn(5.toJs)))).block)
     assert(js { def func3() = 5 } === JsFunDecl("func3", Nil, JsBlock(List(JsReturn(5.toJs)))).block)
     assert(js { def func4(a: String) = 5 } === JsFunDecl("func4", List("a"), JsBlock(List(JsReturn(5.toJs)))).block)
-    val ifElse = Some(JsBlock(List(varDef("c", JsBinOp("*", jb, 2.0.toJs)), JsUnOp("-", jc))))
+    val ifElse = Some(JsBlock(List(JsVarDef("c", JsBinOp("*", jb, 2.0.toJs)), JsUnOp("-", jc))))
     val jsIf = JsIf(JsBinOp(">", ja, 2.toJs), JsBinOp("*", JsBinOp("+", ja, jb), 2.toJs), ifElse)
-    val bodyfunc5 = JsBlock(List(varDef("b", 5.0.toJs), jsIf))
+    val bodyfunc5 = JsBlock(List(JsVarDef("b", 5.0.toJs), jsIf))
     val expectedFunc5 = JsFunDecl("func5", List("a"), bodyfunc5).block
     assert(js {
       def func5(a: Int) = {
@@ -190,9 +190,9 @@ class ScalaToJsConverterTest extends FunSuite {
       for (i <- 0 to a.length) print(a(i))
     }
     val stmt = JsCall(JsIdent("print"), List(JsAccess(JsIdent("a"), JsIdent("i"))))
-    val jsForUntil = JsFor(List(varDef("i", JsAccess(JsIdent("a"), 0.toJs))), JsBinOp("<", JsIdent("i"), JsSelect(JsIdent("a"), "length")), List(JsUnOp("++", JsIdent("i"))), stmt)
-    val jsForTo = JsFor(List(varDef("i", 0.toJs)), JsBinOp("<=", JsIdent("i"), JsSelect(JsIdent("a"), "length")), List(JsUnOp("++", JsIdent("i"))), stmt)
-    assert(ast === JsBlock(List(varDef("a", JsArray(List(1.toJs, 2.toJs))), jsForUntil, jsForTo)))
+    val jsForUntil = JsFor(List(JsVarDef("i", JsAccess(JsIdent("a"), 0.toJs))), JsBinOp("<", JsIdent("i"), JsSelect(JsIdent("a"), "length")), List(JsUnOp("++", JsIdent("i"))), stmt)
+    val jsForTo = JsFor(List(JsVarDef("i", 0.toJs)), JsBinOp("<=", JsIdent("i"), JsSelect(JsIdent("a"), "length")), List(JsUnOp("++", JsIdent("i"))), stmt)
+    assert(ast === JsBlock(List(JsVarDef("a", JsArray(List(1.toJs, 2.toJs))), jsForUntil, jsForTo)))
   }
 
   test("for in") {
@@ -208,10 +208,10 @@ class ScalaToJsConverterTest extends FunSuite {
     }
     /// FIXME: use === instead when scalatest for 2.11 is ready
     assert(js === JsBlock(List(
-      JsVarDef(List(("a", JsArray(List(1.toJs, 2.toJs))))),
-      JsVarDef(List(("b", JsArray(List("1".toJs, "2".toJs))))),
-      JsVarDef(List(("c", JsAnonObjDecl(List("1" -> 1.toJs, "2" -> 2.toJs))))),
-      JsVarDef(List(("d", JsAnonObjDecl(List("a" -> 1.toJs))))),
+      JsVarDef("a", JsArray(List(1.toJs, 2.toJs))),
+      JsVarDef("b", JsArray(List("1".toJs, "2".toJs))),
+      JsVarDef("c", JsAnonObjDecl(List("1" -> 1.toJs, "2" -> 2.toJs))),
+      JsVarDef("d", JsAnonObjDecl(List("a" -> 1.toJs))),
       JsForIn(JsIdent("i"), JsIdent("a"), JsCall(JsIdent("print"), List(JsIdent("i")))),
       JsForIn(JsIdent("i"), JsIdent("b"), JsCall(JsIdent("print"), List(JsIdent("i")))),
       JsForIn(JsIdent("i"), JsIdent("c"), JsCall(JsIdent("print"), List(JsIdent("i")))),
@@ -225,7 +225,7 @@ class ScalaToJsConverterTest extends FunSuite {
       a.replace("s", "a").slice(1, 2)
     }
     val call = JsCall(JsSelect(JsCall(JsSelect(JsIdent("a"), "replace"), List("s".toJs, "a".toJs)), "slice"), List(1.toJs, 2.toJs))
-    assert(ast === JsBlock(List(varDef("a","str".toJs), call)))
+    assert(ast === JsBlock(List(JsVarDef("a","str".toJs), call)))
     val ast1 = js("String".length)
     assert(ast1 === JsSelect(JsString("String"), "length"))
   }
@@ -237,7 +237,7 @@ class ScalaToJsConverterTest extends FunSuite {
       s"$a test"
       s"a = $a and string is ${a.toString}"
     }
-    assert(ast === varDef("a", 1.toJs) ++
+    assert(ast === JsVarDef("a", 1.toJs) ++
       "string".toJs ++
       JsBinOp("+", JsBinOp("+", "".toJs, JsIdent("a")), " test".toJs) ++
       JsBinOp("+", JsBinOp("+", JsBinOp("+", JsBinOp("+", "a = ".toJs, JsIdent("a")), " and string is ".toJs), JsCall(JsSelect(JsIdent("a"), "toString"), Nil)), "".toJs))
@@ -259,22 +259,22 @@ class ScalaToJsConverterTest extends FunSuite {
     assert(arint.eval() === 1)
     assert(js(Array("1", "2")) === JsArray(List("1".toJs, "2".toJs)))
     val call = JsCall(JsSelect(JsIdent("console"), "log"), List(JsIdent("i")))
-    val init = List(JsVarDef(List(("iColl", JsIdent("a")), ("iIdx", 0.toJs), ("i", JsAccess(JsIdent("iColl"), JsIdent("iIdx"))))))
+    val init = List(JsVarDef("iColl", JsIdent("a")), JsVarDef("iIdx", 0.toJs), JsVarDef("i", JsAccess(JsIdent("iColl"), JsIdent("iIdx"))))
     val check = JsBinOp("<", JsIdent("iIdx"), JsSelect(JsIdent("iColl"), "length"))
     val update = List(JsBinOp("=", JsIdent("i"), JsAccess(JsIdent("iColl"), JsUnOp("++", JsIdent("iIdx")))))
     assert(js{
       val a = Array("1", "2")
       for (i <- a) console.log(i)
 
-    } === JsBlock(List(varDef("a", JsArray(List("1".toJs, "2".toJs))), JsFor(init, check, update, call))))
+    } === JsBlock(List(JsVarDef("a", JsArray(List("1".toJs, "2".toJs))), JsFor(init, check, update, call))))
     val call1 = JsCall(JsSelect(JsIdent("a"), "pop"), Nil)
     assert(js {
       val a = JArray("1", "2")
       a.pop()
-    } === JsBlock(List(varDef("a", JsArray(List("1".toJs, "2".toJs))), call1)))
+    } === JsBlock(List(JsVarDef("a", JsArray(List("1".toJs, "2".toJs))), call1)))
 
     val assign = JsBinOp("=", JsAccess(JsIdent("a"), 0.toJs), JsAccess(JsIdent("a"), 1.toJs))
-    val init1 = List(JsVarDef(List(("iIdx", 0.toJs), ("i", JsAccess(JsIdent("a"), JsIdent("iIdx"))))))
+    val init1 = List(JsVarDef("iIdx", 0.toJs), JsVarDef("i", JsAccess(JsIdent("a"), JsIdent("iIdx"))))
     val check1 = JsBinOp("<", JsIdent("iIdx"), JsSelect(JsIdent("a"), "length"))
     val update1 = List(JsBinOp("=", JsIdent("i"), JsAccess(JsIdent("a"), JsUnOp("++", JsIdent("iIdx")))))
     val forStmt = JsFor(init1, check1, update1, JsCall(JsIdent("print"), List(JsIdent("i"))))
@@ -283,7 +283,7 @@ class ScalaToJsConverterTest extends FunSuite {
       for (i <- a) print(i)
       a(0) = a(1)
       a.pop()
-    } === JsBlock(List(varDef("a", JsArray(List(1.toJs, 2.toJs))), forStmt, assign, call1)))
+    } === JsBlock(List(JsVarDef("a", JsArray(List(1.toJs, 2.toJs))), forStmt, assign, call1)))
 
     val ast = js {
       val a = Seq("1", "2")
@@ -310,7 +310,7 @@ class ScalaToJsConverterTest extends FunSuite {
       }
     }
     val jsIf = JsIf(JsBinOp(">", JsSelect(JsIdent("a"), "length"), 1.toJs), JsRaw("console.log(a[1])"), None)
-    assert(ast2 === JsBlock(List(varDef("a", JsRaw("[1, 2]")), jsIf)))
+    assert(ast2 === JsBlock(List(JsVarDef("a", JsRaw("[1, 2]")), jsIf)))
     object L {
       class A
       def f(x: Int): Int = ???
@@ -341,7 +341,7 @@ class ScalaToJsConverterTest extends FunSuite {
       a.exec("asdf").toString()
     }
     val call = JsCall(JsSelect(JsCall(JsSelect(JsIdent("a"), "exec"), List("asdf".toJs)), "toString"), Nil)
-    assert(ast === JsBlock(List(varDef("a",JsNew(JsCall(JsIdent("RegExp"),List("d.*".toJs, "g".toJs)))), call)))
+    assert(ast === JsBlock(List(JsVarDef("a",JsNew(JsCall(JsIdent("RegExp"),List("d.*".toJs, "g".toJs)))), call)))
   }
 
   test("Date") {
@@ -350,7 +350,7 @@ class ScalaToJsConverterTest extends FunSuite {
       a.getDay().toString()
     }
     val call = JsCall(JsSelect(JsCall(JsSelect(JsIdent("a"), "getDay"), Nil), "toString"), Nil)
-    assert(ast === JsBlock(List(varDef("a", JsNew(JsCall(JsIdent("Date"), Nil))), call)))
+    assert(ast === JsBlock(List(JsVarDef("a", JsNew(JsCall(JsIdent("Date"), Nil))), call)))
   }
 
   test("Maps") {
@@ -362,7 +362,7 @@ class ScalaToJsConverterTest extends FunSuite {
     }
     val call1 = JsCall(JsSelect(JsCall(JsSelect(JsAccess(JsIdent("a"), "field".toJs), "pop"), Nil), "toString"), Nil)
     val fields = List("field" -> JsArray(List(1.toJs, 2.toJs)), "field2" -> JsArray(List(1.toJs)), "field3" -> JsArray(Nil))
-    assert(ast === JsBlock(List(varDef("a", JsAnonObjDecl(fields)), call1)))
+    assert(ast === JsBlock(List(JsVarDef("a", JsAnonObjDecl(fields)), call1)))
 
     // Mutable Map
     val ast1 = js {
@@ -370,7 +370,7 @@ class ScalaToJsConverterTest extends FunSuite {
       a("field") = a("field2")
     }
     val stmt = JsBinOp("=", JsAccess(JsIdent("a"), "field".toJs), JsAccess(JsIdent("a"), "field2".toJs))
-    assert(ast1 === JsBlock(List(varDef("a", JsAnonObjDecl(fields)), stmt)))
+    assert(ast1 === JsBlock(List(JsVarDef("a", JsAnonObjDecl(fields)), stmt)))
   }
 
   test("Switch declaration") {
@@ -497,7 +497,7 @@ class ScalaToJsConverterTest extends FunSuite {
       $("button", this).click(() => $("p").css("color", "red"))
       $.field = $.select
     }
-    val request = varDef("a",JsNew(JsCall(JsIdent("XmlHttpRequest"),List("request".toJs))))
+    val request = JsVarDef("a",JsNew(JsCall(JsIdent("XmlHttpRequest"),List("request".toJs))))
     val foo = JsCall(JsSelect(JsIdent("a"),"foo"),List("reply".toJs))
     val returnExpr = JsCall(JsSelect(JsCall(JsSelect(JsIdent("$"), "apply"), List("p".toJs)), "css"), List("color".toJs, "red".toJs))
     val anonFunDecl = JsAnonFunDecl(List(), JsReturn(returnExpr).block)
