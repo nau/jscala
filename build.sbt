@@ -66,27 +66,13 @@ lazy val jscala = (project in file("jscala")).settings(buildSettings:_*).setting
 
 lazy val jscalaAnnots = (project in file("jscala-annots")).settings(buildSettings: _*).settings(
   name := "jscala-annots",
-  libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ % "provided"),
-  libraryDependencies <++= scalaVersion { sv =>
-    if (sv.startsWith("2.11")) Seq("fr.apyx" %% "ts2scala-macros" % "0.3.0" exclude("org.scala-lang", "scala-reflect"))
-    else Seq()
-  },
-  sources in Compile <<= (sources in Compile, scalaVersion, baseDirectory) map { (ss, sv, bd) =>
-    if (sv.startsWith("2.11")) ss
-    else ss.filter { (f: java.io.File) =>
-      val path = (bd / "src/main/scala/org/jscala/typescript").getCanonicalPath
-      !f.getCanonicalPath.startsWith(path)
-    }
-  }
+  libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ % "provided")
 ).dependsOn(jscala)
 
 lazy val examples: Project = (project in file("jscala-examples")).settings(buildSettings: _*).settings(
   name := "jscala-examples",
   tetrisTask,
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test",
-  libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.8",
-  sources in Test <<= (sources in Test, scalaVersion) map { (ss, sv) =>
-    if (sv.startsWith("2.11")) ss
-    else ss.filter { (f: java.io.File) => !f.getCanonicalPath.endsWith("TypescriptedTest.scala") }
-  }
+  libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4",
+  libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.8"
 ).dependsOn(jscalaAnnots)
