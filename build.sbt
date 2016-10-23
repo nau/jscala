@@ -74,6 +74,7 @@ lazy val examples: Project = (project in file("jscala-examples")).settings(build
   name := "jscala-examples",
   tetrisTask,
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test",
+  libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.13.3" % "test",
   libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4",
   libraryDependencies += "org.scala-js" % "scalajs-dom_sjs0.6_2.11" % "0.9.1",
   libraryDependencies += "be.doeraene" % "scalajs-jquery_sjs0.6_2.11" % "0.9.0",

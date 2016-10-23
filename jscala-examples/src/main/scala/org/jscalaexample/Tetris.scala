@@ -3,7 +3,6 @@ package org.jscalaexample
 import org.jscala._
 import org.jscala.JArray
 import org.scalajs.dom._
-import org.scalajs.dom.html
 import java.io.{File, FileWriter}
 
 import org.scalajs.dom.raw.HTMLElement
@@ -16,7 +15,7 @@ object Tetris {
   def tetris = {
     class Canvas(var width: Int, var height: Int, var clientWidth: Int, var clientHeight: Int) extends JsDynamic
     class Stats extends JsDynamic
-    javascriptDebug {
+    javascript {
       //-------------------------------------------------------------------------
       // base helper methods
       //-------------------------------------------------------------------------

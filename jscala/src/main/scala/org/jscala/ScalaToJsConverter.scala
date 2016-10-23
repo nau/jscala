@@ -17,6 +17,8 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     if (debug) println(tree.raw)
 
     lazy val jsSelect: ToExpr[JsExpr] = {
+      case Select(Select(Select(Ident(Name("scala")), Name("scalajs")), Name("js")), Name(name)) => q"""org.jscala.JsIdent($name)"""
+//      case q"scala.scalajs.js.$name" => q"""org.jscala.JsIdent($name)"""
       case q"org.scalajs.dom.`package`.${TermName(name)}" => q"""org.jscala.JsIdent($name)"""
       // org.jscala.package.$ident => $ident
       case Select(Select(Select(Ident(Name("org")), Name("jscala")), Name("package")), Name(name)) =>
