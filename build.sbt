@@ -78,5 +78,6 @@ lazy val examples: Project = (project in file("jscala-examples")).settings(build
   libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4",
   libraryDependencies += "org.scala-js" % "scalajs-dom_sjs0.6_2.11" % "0.9.1",
   libraryDependencies += "be.doeraene" % "scalajs-jquery_sjs0.6_2.11" % "0.9.0",
+  libraryDependencies += "com.typesafe.play" %% "play-json" % "2.5.0",
   libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.8"
 ).dependsOn(jscalaAnnots)

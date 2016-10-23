@@ -4,6 +4,8 @@ import org.jscala._
 import scala.util.Random
 import org.scalajs.dom._
 
+case class User(name: String, id: Int)
+
 object JScalaExample {
   def domManipulations() {
     val html = javascript {
@@ -103,28 +105,30 @@ object JScalaExample {
     println(genAjaxCall(123).asString)
   }
 
+
+  import play.api.libs.json._
   def readmeExample() {
-    @Javascript class User(val name: String, val id: Int)
-    @Javascript(json = false) class Greeter {
+    implicit val userJson = Json.format[User]
+    @Javascript class Greeter {
       def hello(u: User) {
         print(s"Hello, ${u.name} \n")
       }
     }
     // Run on JVM
-    val u1 = new User("Alex", 1)
+    val u1 = User("Alex", 1)
     val greeter = new Greeter()
     greeter.hello(u1) // prints "Hello, Alex"
-    val json = u1.js.json.asString
+    val json = Json.stringify(Json.toJson(u1))
     val main = javascript {
-        val u = new User("nau", 2)
+        val u = User("nau", 2)
         // read User from json string generated above
-        val u1Json = eval(s"(${inject(json)})").as[User]
+        val u1Json = eval(s"(${include(json)})").as[User]
         val t = new Greeter()
         t.hello(u)
         t.hello(u1Json)
       }
     // join classes definitions with main code
-    val js = User.jscala.javascript ++ Greeter.jscala.javascript ++ main 
+    val js = Greeter.jscala.javascript ++ main
     js.eval() // run using Rhino
     println(js.asString) // prints resulting JavaScript
   }

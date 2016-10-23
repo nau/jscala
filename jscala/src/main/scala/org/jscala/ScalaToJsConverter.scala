@@ -77,6 +77,12 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     }
 
     lazy val jsMapExpr: ToExpr[JsExpr] = {
+      case tree@Apply(Select(path, TermName("apply")), args) if tree.isCaseClass && !tree.tpe.typeSymbol.fullName.startsWith("org.jscala") =>
+        println(s"PIZDEC: $path, ${path.tpe}, ${tree.isCaseClass}")
+        val params = listToExpr(tree.tpe.members.collect {
+          case m: MethodSymbol if m.isCaseAccessor => m
+        }.toList.zip(args).map { case (m, a) => q"(${m.name.decodedName.toString}, ${jsExprOrDie(a)})" })
+        q"org.jscala.JsAnonObjDecl($params)"
       case Apply(TypeApply(Select(path, Name("apply")), _), args) if path.tpe.baseClasses.contains(mapFactorySym) =>
         genMap(args)
       case Apply(Select(path, Name("apply")), List(index)) if path.tpe.baseClasses.contains(mapSym) =>

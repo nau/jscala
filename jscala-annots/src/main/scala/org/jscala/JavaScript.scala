@@ -8,7 +8,7 @@ import scala.reflect.macros.Context
 
 object MacroAnnotations {
 
-  class JavascriptAnnotation [C <: Context](val c: C, json: Boolean, debug: Boolean) extends JsBasis[C] {
+  class JavascriptAnnotation [C <: Context](val c: C, debug: Boolean) extends JsBasis[C] {
     import c.universe._
     def transform(annottees: c.Expr[Any]*): c.Expr[Any] = {
       val inputs = annottees.map(_.tree).toList
@@ -18,18 +18,11 @@ object MacroAnnotations {
           val jsDef = if (mods hasFlag Flag.CASE) EmptyTree
           else DefDef(Modifiers(), TermName("javascript"), List(), List(), Ident(TypeName("JsAst")),
             Apply(Select(Select(Ident(TermName("org")), TermName("jscala")), javascriptMacro), List(Block(
-              List(ClassDef(mods, name, List(), Template(parents, emptyValDef, body))), Literal(Constant(()))))))
-          val expanded = if (json) {
-            val jscalaObj = q"""object js {
-              def json: JsExpr = org.jscala.toJson[$name]($name.this)
-            }"""
-            body :+ jscalaObj
-          } else body
-          val cd1 = ClassDef(mods, name, tparams, Template(parents, sf, expanded))
+              List(ClassDef(mods, name, List(), Template(parents, noSelfType, body))), Literal(Constant(()))))))
+          val cd1 = ClassDef(mods, name, tparams, Template(parents, sf, body))
           val companion = comp match {
             case Nil => q"""object ${name.toTermName} { object jscala {
                 $jsDef
-                def fromJson(json: String) = org.jscala.fromJson[$name](json)
               }
             }"""
             case List(co@ModuleDef(mods, name, Template(p, t, impl))) => ModuleDef(mods, name, Template(p, t, impl :+ jsDef))
@@ -46,28 +39,25 @@ object MacroAnnotations {
   def annotationImpl(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
     import c.universe._
 
-    var dbg = false
-    var json = true
+    var debug = false
     c.macroApplication match {
       case Apply(Select(Apply(Select(New(Ident(js)), termNames.CONSTRUCTOR), args), _), _) if js.decodedName.toString == "Javascript" =>
         args match {
-          case List(Literal(Constant(js: Boolean))) => json = js
-          case List(Literal(Constant(js: Boolean)), Literal(Constant(db: Boolean))) => json = js; dbg = db
+          case List(Literal(Constant(dbg: Boolean))) => debug = dbg
           case _ =>
             args.foreach {
-            case AssignOrNamedArg(Ident(debug), Literal(Constant(v: Boolean))) if debug.decodedName.toString == "debug" => dbg = v
-            case AssignOrNamedArg(Ident(js), Literal(Constant(v: Boolean))) if js.decodedName.toString == "json" => json = v
+            case AssignOrNamedArg(Ident(dbg), Literal(Constant(v: Boolean))) if dbg.decodedName.toString == "debug" => debug = v
             case _ =>
           }
         }
       case _ => c.warning(c.enclosingPosition, "Can't parse @Javascript annotation arguments")
     }
 
-    new JavascriptAnnotation[c.type](c, json, dbg).transform(annottees:_*)
+    new JavascriptAnnotation[c.type](c, debug).transform(annottees:_*)
   }
 }
 
-class Javascript(val json: Boolean = true, val debug: Boolean = false) extends StaticAnnotation {
+class Javascript(val debug: Boolean = false) extends StaticAnnotation {
   def macroTransform(annottees: Any*) = macro MacroAnnotations.annotationImpl
 }
 

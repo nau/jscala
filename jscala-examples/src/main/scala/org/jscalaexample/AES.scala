@@ -30,7 +30,7 @@ object AesExample {
   }
 }
 
-@Javascript(json = false)
+@Javascript
 class Aes(val key: Array[Int]) {
   val encTable = Array(new Array[Int](256), new Array[Int](256), new Array[Int](256), new Array[Int](256), new Array[Int](256))
   val decTable = Array(new Array[Int](256), new Array[Int](256), new Array[Int](256), new Array[Int](256), new Array[Int](256))
