@@ -219,12 +219,6 @@ class Date {
   def valueOf() = 0
 }
 
-object console {
-  def log(s: Any) {
-    println(s)
-  }
-}
-
 trait JsDynamic extends Dynamic {
   def unary_! = true
   def ||(a: Any) = this

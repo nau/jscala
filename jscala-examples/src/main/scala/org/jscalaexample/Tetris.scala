@@ -2,7 +2,11 @@ package org.jscalaexample
 
 import org.jscala._
 import org.jscala.JArray
+import org.scalajs.dom._
+import org.scalajs.dom.html
 import java.io.{File, FileWriter}
+
+import org.scalajs.dom.raw.HTMLElement
 
 /**
  * Javascript Tetris code originally taken from https://github.com/jakesgordon/javascript-tetris/
@@ -12,12 +16,12 @@ object Tetris {
   def tetris = {
     class Canvas(var width: Int, var height: Int, var clientWidth: Int, var clientHeight: Int) extends JsDynamic
     class Stats extends JsDynamic
-    javascript {
+    javascriptDebug {
       //-------------------------------------------------------------------------
       // base helper methods
       //-------------------------------------------------------------------------
 
-      def get(id: String) = document.getElementById(id)
+      def get(id: String) = document.getElementById(id).as[HTMLElement]
       def hide(id: String) { get(id).style.visibility = "hidden"; }
       def show(id: String) { get(id).style.visibility = null;     }
       def html(id: String, html: String) { get(id).innerHTML = html;            }
@@ -26,7 +30,7 @@ object Tetris {
       def random(min: Int, max: Int) = { (min + (Math.random() * (max - min)));            }
       def randomChoice(choices: Array[Int]) = choices(Math.round(random(0, choices.length-1)).as[Int])
 
-      if (!window.requestAnimationFrame) {
+      /*if (!window.requestAnimationFrame) {
         val func = (callback: () => Unit, element: Canvas) => {
           window.setTimeout(callback, 1000 / 60)
         }
@@ -34,7 +38,7 @@ object Tetris {
           window.mozRequestAnimationFrame    ||
           window.oRequestAnimationFrame      ||
           window.msRequestAnimationFrame     || func
-      }
+      }*/
 
       //-------------------------------------------------------------------------
       // game constants
@@ -45,7 +49,7 @@ object Tetris {
       val stats   = new Stats()
       val canvas  = get("canvas").as[Canvas]
       val ctx     = canvas.getContext("2d")
-      val ucanvas = get("upcoming").as[Element]
+      val ucanvas = get("upcoming").as[Canvas]
       val uctx    = ucanvas.getContext("2d")
       val speed   = new { val start = 0.6; val decrement = 0.005; val min = 0.1 } // how long before piece drops by 1 row (seconds)
       val nx      = 10 // width of tetris court (in blocks)
@@ -158,9 +162,9 @@ object Tetris {
           draw()
           stats.update()
           last = now
-          window.requestAnimationFrame(frame _, canvas)
+          window.as[JsDynamic].requestAnimationFrame(frame _, canvas)
         }
-        resize() // setup all our sizing information
+        resize(null) // setup all our sizing information
         reset()  // reset the per-game variables
         frame()  // start the first frame
       }
@@ -175,7 +179,7 @@ object Tetris {
         window.addEventListener("resize", resize _, false)
       }
 
-      def resize() {
+      def resize(ev: JsDynamic) {
         canvas.width   = canvas.clientWidth  // set canvas logical size equal to its physical size
         canvas.height  = canvas.clientHeight // (ditto)
         ucanvas.width  = ucanvas.clientWidth

@@ -2,6 +2,7 @@ package org.jscalaexample
 
 import org.jscala._
 import scala.util.Random
+import org.scalajs.dom._
 
 object JScalaExample {
   def domManipulations() {
@@ -36,7 +37,7 @@ object JScalaExample {
     val js = javascript {
       window.location.href = "http://jscala.org"
       window.open("https://github.com")
-      history.back()
+      window.history.back()
     }
     println(js.asString)
   }
@@ -70,7 +71,7 @@ object JScalaExample {
         val map = collection.mutable.Map[String, String]()
         if (typeof(map) == "string") {
           for (idx <- 0 until list.attributes.length) {
-            val attr = list.attributes.item(idx).as[Attribute]
+            val attr = list.attributes.item(idx)
             map(attr.name) = func(attr.textContent)
           }
         } else {

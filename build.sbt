@@ -61,6 +61,7 @@ lazy val root: Project = (project in file(".")).settings(buildSettings: _*).sett
 lazy val jscala = (project in file("jscala")).settings(buildSettings:_*).settings(
   name := "jscala-macros",
   libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ % "provided"),
+  libraryDependencies += "org.scala-js" % "scalajs-library_2.11" % "0.6.13",
   libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.8" % "provided"
 )
 
@@ -74,5 +75,7 @@ lazy val examples: Project = (project in file("jscala-examples")).settings(build
   tetrisTask,
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test",
   libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4",
+  libraryDependencies += "org.scala-js" % "scalajs-dom_sjs0.6_2.11" % "0.9.1",
+  libraryDependencies += "be.doeraene" % "scalajs-jquery_sjs0.6_2.11" % "0.9.0",
   libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.8"
 ).dependsOn(jscalaAnnots)

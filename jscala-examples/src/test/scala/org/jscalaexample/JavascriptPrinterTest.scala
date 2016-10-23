@@ -3,6 +3,7 @@ package org.jscalaexample
 import org.scalatest.FunSuite
 import org.jscala._
 import org.jscala.{javascript=>js}
+import org.scalajs.dom.console
 
 class JavascriptPrinterTest extends FunSuite {
   test("String escaping") {

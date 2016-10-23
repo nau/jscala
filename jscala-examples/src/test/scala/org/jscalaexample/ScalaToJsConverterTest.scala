@@ -3,6 +3,7 @@ package org.jscalaexample
 import org.scalatest.FunSuite
 import org.jscala._
 import org.jscala.{javascript=>js}
+import org.scalajs.dom.console
 import scala.collection.mutable.ArrayBuffer
 
 class ScalaToJsConverterTest extends FunSuite {

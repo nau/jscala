@@ -17,6 +17,7 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
     if (debug) println(tree.raw)
 
     lazy val jsSelect: ToExpr[JsExpr] = {
+      case q"org.scalajs.dom.`package`.${TermName(name)}" => q"""org.jscala.JsIdent($name)"""
       // org.jscala.package.$ident => $ident
       case Select(Select(Select(Ident(Name("org")), Name("jscala")), Name("package")), Name(name)) =>
         q"org.jscala.JsIdent($name)"
@@ -219,6 +220,8 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       case Select(expr, Name("toDouble")) => jsExprOrDie(expr)
       case TypeApply(Select(expr, Name("asInstanceOf")), _) =>
         jsExprOrDie(expr)
+      case q"js.this.Any.${TermName(func)}[..$tpts](...$exprss)" if func.startsWith("from") || func.startsWith("to") =>
+        jsExprOrDie(exprss.head.head)
       case Apply(TypeApply(Select(path, Name(n)), _), List(expr)) if path.is("org.jscala.package") && n.startsWith("implicit") =>
         jsExprOrDie(expr)
       case Apply(Select(path, Name(n)), List(expr)) if path.is("org.jscala.package") && n.startsWith("implicit") =>
@@ -275,6 +278,10 @@ class ScalaToJsConverter[C <: Context](val c: C, debug: Boolean) extends JsBasis
       case app@Apply(fun, args) if app.tpe <:< typeOf[JsAst] =>
         val expr = c.Expr[JsAst](app)
         q"org.jscala.JsLazy(() => $expr)"
+      case Apply(TypeApply(fun, _), args) =>
+        val callee = jsExprOrDie apply fun
+        val params = funParams(args)
+        q"org.jscala.JsCall($callee, $params)"
       case Apply(fun, args) =>
         val callee = jsExprOrDie apply fun
         val params = funParams(args)
