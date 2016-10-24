@@ -114,6 +114,7 @@ package object jscala {
   def print(x: Any) {
     System.out.println(x)
   }
+  def delete(x: Any): Boolean = ???
 
   /**
    * Scala/JavaScript implementation of for..in

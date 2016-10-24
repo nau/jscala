@@ -330,6 +330,21 @@ class ScalaToJsConverterTest extends FunSuite {
     assert(js("".instanceof("String")) === JsBinOp("instanceof", "".toJs, JsIdent("String")))
   }
 
+  test("delete operator") {
+    val ast = js {
+      val a = Map("field1" -> 1, "field2" -> 2)
+      delete(a("field1"))
+      a("field1") == undefined
+    }
+    assert(ast.eval() === true)
+    val ast2 = js {
+      val a = Array(1, 2)
+      delete(a(1))
+      a(1) == undefined
+    }
+    assert(ast2.eval() === true)
+  }
+
   test("include") {
     val ast = javascript { include(javascript(1 + 2)) }
     assert(ast.eval() === 3.0)
@@ -378,7 +393,7 @@ class ScalaToJsConverterTest extends FunSuite {
       val t = Test("nau", 2)
       t.n
     }
-    println(JavascriptPrinter.simplify(ast2) === JsBlock(List(JsVarDef("t", JsAnonObjDecl(List(("n", "nau".toJs), ("id", 2.toJs)))), JsSelect(JsIdent("t"), "n"))))
+    assert(JavascriptPrinter.simplify(ast2) === JsBlock(List(JsVarDef("t", JsAnonObjDecl(List(("n", "nau".toJs), ("id", 2.toJs)))), JsSelect(JsIdent("t"), "n"))))
   }
 
   test("Switch declaration") {
