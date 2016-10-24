@@ -1,7 +1,5 @@
 package org.jscala
 
-import scala.reflect.macros.blackbox.Context
-import scala.collection.generic.{MapFactory, SeqFactory}
 import scala.reflect.macros.blackbox
 
 /**
@@ -14,11 +12,11 @@ trait BasisConverter[C <: blackbox.Context] extends MacroHelpers[C] {
 
   class DieException(val msg: String, val t: Tree) extends RuntimeException
 
-  protected def die(msg: String) = new ToExpr[Nothing] {
+  protected def die(msg: String): ToExpr[Nothing] = new ToExpr[Nothing] {
 
-    def isDefinedAt(x: Tree) = true
+    def isDefinedAt(x: Tree): Boolean = true
 
-    def apply(v1: Tree) = throw new DieException(msg, v1)
+    def apply(v1: Tree): Nothing = throw new DieException(msg, v1)
   }
 
   protected def funParams(args: List[Tree]): Tree = {

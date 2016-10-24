@@ -220,15 +220,15 @@ class Date {
 }
 
 trait JsDynamic extends Dynamic {
-  def unary_! = true
-  def ||(a: Any) = this
-  def &&(a: Any) = this
-  def +(a: Any) = this
-  def -(a: Any) = this
-  def *(a: Any) = this
-  def /(a: Any) = this
-  def apply(a: Any*) = this
-  def applyDynamic(name: String)(args: Any*) = this
-  def selectDynamic(name: String) = this
-  def updateDynamic(name: String)(arg: Any) = this
+  def unary_! : Boolean = true
+  def ||(a: Any): JsDynamic = this
+  def &&(a: Any): JsDynamic = this
+  def +(a: Any): JsDynamic = this
+  def -(a: Any): JsDynamic = this
+  def *(a: Any): JsDynamic = this
+  def /(a: Any): JsDynamic = this
+  def apply(a: Any*): JsDynamic = this
+  def applyDynamic(name: String)(args: Any*): JsDynamic = this
+  def selectDynamic(name: String): JsDynamic = this
+  def updateDynamic(name: String)(arg: Any): JsDynamic = this
 }

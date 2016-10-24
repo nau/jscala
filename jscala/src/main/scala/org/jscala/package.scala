@@ -1,8 +1,10 @@
 package org
 
-import javax.script.ScriptEngineManager
+import javax.script.{ScriptEngine, ScriptEngineManager}
+
 import com.yahoo.platform.yui.compressor.JavaScriptCompressor
-import java.io.{StringWriter, StringReader}
+import java.io.{StringReader, StringWriter}
+
 import org.mozilla.javascript.ErrorReporter
 
 package object jscala {
@@ -10,16 +12,16 @@ package object jscala {
   import language.implicitConversions
   import scala.reflect.macros.Context
 
-  private lazy val engine = {
+  private lazy val engine: ScriptEngine = {
     val factory = new ScriptEngineManager(null)
     factory.getEngineByName("JavaScript")
   }
 
   implicit class JsAstOps(ast: JsAst) {
 
-    def asString = JavascriptPrinter.print(ast, 0)
-    def eval() = engine.eval(asString)
-    def compress = {
+    def asString: String = JavascriptPrinter.print(ast, 0)
+    def eval(): AnyRef = engine.eval(asString)
+    def compress: String = {
       val compressor = new JavaScriptCompressor(new StringReader(asString), new ErrorReporter {
         def warning(p1: String, p2: String, p3: Int, p4: String, p5: Int) {
           println(s"Warn $p1 $p2, ${p3.toString} $p4 ${p5.toString}")
@@ -41,14 +43,14 @@ package object jscala {
   }
 
   implicit class JsAnyOps(a: Any) {
-    def as[A] = a.asInstanceOf[A]
+    def as[A]: A = a.asInstanceOf[A]
     def instanceof[A]: Boolean = sys.error("Can't be used on JVM side")
     def instanceof(name: String): Boolean = sys.error("Can't be used on JVM side")
   }
 
   implicit def implicitString2JString(s: String): JString = new JString(s)
   implicit class implicitRichString(s: String) {
-    def jstr = new JString(s)
+    def jstr: JString = new JString(s)
   }
   implicit def implicitJString2String(s: JString): String = ""
   implicit def implicitArray2JArray[A](s: Array[A]): JArray[A] = ???
@@ -59,33 +61,33 @@ package object jscala {
   trait JsSerializer[-A] {
     def apply(a: A): JsExpr
   }
-  implicit object jsExprJsSerializer extends JsSerializer[JsExpr] { def apply(a: JsExpr) = a }
-  implicit object boolJsSerializer extends JsSerializer[Boolean] { def apply(a: Boolean) = JsBool(a) }
-  implicit object byteJsSerializer extends JsSerializer[Byte] { def apply(a: Byte) = JsNum(a, false) }
-  implicit object shortJsSerializer extends JsSerializer[Short] { def apply(a: Short) = JsNum(a, false) }
-  implicit object intJsSerializer extends JsSerializer[Int] { def apply(a: Int) = JsNum(a, false) }
-  implicit object longJsSerializer extends JsSerializer[Long] { def apply(a: Long) = JsNum(a, false) }
-  implicit object floatJsSerializer extends JsSerializer[Float] { def apply(a: Float) = JsNum(a, true) }
-  implicit object doubleJsSerializer extends JsSerializer[Double] { def apply(a: Double) = JsNum(a, true) }
-  implicit object stringJsSerializer extends JsSerializer[String] { def apply(a: String) = JsString(a) }
+  implicit object jsExprJsSerializer extends JsSerializer[JsExpr] { def apply(a: JsExpr): JsExpr = a }
+  implicit object boolJsSerializer extends JsSerializer[Boolean] { def apply(a: Boolean): JsExpr = JsBool(a) }
+  implicit object byteJsSerializer extends JsSerializer[Byte] { def apply(a: Byte): JsExpr = JsNum(a, false) }
+  implicit object shortJsSerializer extends JsSerializer[Short] { def apply(a: Short): JsExpr = JsNum(a, false) }
+  implicit object intJsSerializer extends JsSerializer[Int] { def apply(a: Int): JsExpr = JsNum(a, false) }
+  implicit object longJsSerializer extends JsSerializer[Long] { def apply(a: Long): JsExpr = JsNum(a, false) }
+  implicit object floatJsSerializer extends JsSerializer[Float] { def apply(a: Float): JsExpr = JsNum(a, true) }
+  implicit object doubleJsSerializer extends JsSerializer[Double] { def apply(a: Double): JsExpr = JsNum(a, true) }
+  implicit object stringJsSerializer extends JsSerializer[String] { def apply(a: String): JsExpr = JsString(a) }
   implicit def arrJsSerializer[A](implicit ev: JsSerializer[A]): JsSerializer[Array[A]] =
     new JsSerializer[Array[A]] {
-      def apply(a: Array[A]) = JsArray(a.map(ev.apply).toList)
+      def apply(a: Array[A]): JsExpr = JsArray(a.map(ev.apply).toList)
     }
 
   implicit def seqJsSerializer[A](implicit ev: JsSerializer[A]): JsSerializer[collection.Seq[A]] =
     new JsSerializer[collection.Seq[A]] {
-      def apply(a: collection.Seq[A]) = JsArray(a.map(ev.apply).toList)
+      def apply(a: collection.Seq[A]): JsExpr = JsArray(a.map(ev.apply).toList)
     }
 
   implicit def mapJsSerializer[A](implicit ev: JsSerializer[A]): JsSerializer[collection.Map[String, A]] =
     new JsSerializer[collection.Map[String, A]] {
-      def apply(a: collection.Map[String, A]) = JsAnonObjDecl(a.map{ case (k, v) => (k, ev.apply(v)) }.toList)
+      def apply(a: collection.Map[String, A]): JsExpr = JsAnonObjDecl(a.map{ case (k, v) => (k, ev.apply(v)) }.toList)
     }
 
   implicit def funcJsSerializer[A](implicit ev: JsSerializer[A]): JsSerializer[() => A] =
     new JsSerializer[() => A] {
-      def apply(a: () => A) = ev.apply(a())
+      def apply(a: () => A): JsExpr = ev.apply(a())
     }
 
   implicit class ToJsExpr[A](a: A)(implicit ev: JsSerializer[A]) {
@@ -105,13 +107,13 @@ package object jscala {
   def escape(str: String): JString = null
   def unescape(str: String): JString = null
   def eval(str: String): AnyRef = null
-  def isFinite(x: Any) = false
-  def isNaN(x: Any) = false
-  def parseFloat(str: String) = str.toDouble
-  def parseInt(str: String, base: Int = 10) = java.lang.Integer.parseInt(str, base)
-  def typeof(x: Any) = ""
-  def include(js: String) = ""
-  def print(x: Any) {
+  def isFinite(x: Any): Boolean = false
+  def isNaN(x: Any): Boolean = false
+  def parseFloat(str: String): Double = str.toDouble
+  def parseInt(str: String, base: Int = 10): Int = java.lang.Integer.parseInt(str, base)
+  def typeof(x: Any): String = ""
+  def include(js: String): String = ""
+  def print(x: Any): Unit = {
     System.out.println(x)
   }
   def delete(x: Any): Boolean = ???
@@ -127,7 +129,7 @@ package object jscala {
    * var coll = ["a", "b"];
    * for (var ch in coll) print(ch);
    */
-  def forIn[A](coll: Seq[A])(f: Int => Unit) = {
+  def forIn[A](coll: Seq[A])(f: Int => Unit): Unit = {
     var idx = 0
     val len = coll.length
     while (idx < len) {
@@ -147,7 +149,7 @@ package object jscala {
    * var coll = {"a": 1, "b": 2};
    * for (var ch in coll) print(ch);
    */
-  def forIn[A, B](map: Map[A, B])(f: A => Unit) = {
+  def forIn[A, B](map: Map[A, B])(f: A => Unit): Unit = {
     map.keysIterator.foreach(k => f(k))
   }
 
@@ -163,13 +165,13 @@ package object jscala {
    * for (var ch in obj) print(ch);
    * @note Doesn't work in Scala!
    */
-  def forIn[A, B](obj: AnyRef)(f: String => Unit) = ???
+  def forIn[A, B](obj: AnyRef)(f: String => Unit): Unit = ???
 
-  def include(a: JsAst) = ???
+  def include(a: JsAst): Nothing = ???
   /**
    * Injects a value into generated JavaScript using JsSerializer
    */
-  def inject[A](a: A)(implicit jss: JsSerializer[A]) = a
+  def inject[A](a: A)(implicit jss: JsSerializer[A]): A = a
 
   /**
    * Macro that generates JavaScript AST representation of its argument
