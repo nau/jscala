@@ -2,7 +2,7 @@ package org.jscalaexample
 
 import org.scalatest.FunSuite
 import org.jscala._
-import org.jscala.{javascript=>js}
+import org.jscala.{javascript => js}
 import org.scalajs.dom.console
 import scala.collection.mutable.ArrayBuffer
 
@@ -547,5 +547,15 @@ class ScalaToJsConverterTest extends FunSuite {
     }
 //    println(ast.asString)
     assert(ast.eval() === "1")
+  }
+
+  test("Bug #23") {
+    def m1 = javascript { "string" }
+    def m2() = javascript { "string" }
+
+    val ast = javascript {
+      m1.as[String] + m2()
+    }
+    assert(ast.eval() === "stringstring")
   }
 }

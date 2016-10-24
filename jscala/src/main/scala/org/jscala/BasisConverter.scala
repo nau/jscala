@@ -71,7 +71,8 @@ trait BasisConverter[C <: blackbox.Context] extends MacroHelpers[C] {
   }
 
   protected lazy val jsIdent: ToExpr[JsIdent] = {
-    case Ident(name) =>q"org.jscala.JsIdent(${name.decodedName.toString})"
+    case id@Ident(TermName(name)) if id.symbol.isMethod && id.symbol.asMethod.returnType <:< typeOf[JsAst] => q"org.jscala.JsLazy(() => $id)"
+    case Ident(Name(name)) => q"org.jscala.JsIdent($name)"
   }
 
   protected lazy val jsJStringExpr: ToExpr[JsExpr] = {
