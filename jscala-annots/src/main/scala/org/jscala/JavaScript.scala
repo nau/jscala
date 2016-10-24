@@ -8,7 +8,7 @@ import scala.reflect.macros.Context
 
 object MacroAnnotations {
 
-  class JavascriptAnnotation [C <: Context](val c: C, debug: Boolean) extends JsBasis[C] {
+  class JavascriptAnnotation [C <: Context](val c: C, debug: Boolean) {
     import c.universe._
     def transform(annottees: c.Expr[Any]*): c.Expr[Any] = {
       val inputs = annottees.map(_.tree).toList
