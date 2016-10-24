@@ -173,11 +173,6 @@ package object jscala {
   /**
    * Macro that generates JavaScript AST representation of its argument
    */
-  def ajax[A, B](input: A)(server: A => B)(callback: B => Unit): JsAst = ???
-
-  /**
-   * Macro that generates JavaScript AST representation of its argument
-   */
   def javascript(expr: Any): JsAst = macro Macros.javascriptImpl
   /**
    * Macro that generates JavaScript String representation of its argument
