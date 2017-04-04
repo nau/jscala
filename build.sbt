@@ -7,7 +7,8 @@ lazy val ossStaging   = "Sonatype OSS Staging" at "https://oss.sonatype.org/serv
 lazy val buildSettings = Defaults.coreDefaultSettings ++ Seq(
     organization := "org.jscala",
     version := "0.5-SNAPSHOT",
-    scalaVersion := "2.11.8",
+    crossScalaVersions := Seq("2.11.8", "2.12.1"),
+    scalaVersion := "2.12.1",
     resolvers += Resolver.sonatypeRepo("snapshots"),
     credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
     publishTo <<= version((v: String) => Some( if (v.trim endsWith "SNAPSHOT") ossSnapshots else ossStaging)),
@@ -61,7 +62,7 @@ lazy val root: Project = (project in file(".")).settings(buildSettings: _*).sett
 lazy val jscala = (project in file("jscala")).settings(buildSettings:_*).settings(
   name := "jscala-macros",
   libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ % "provided"),
-  libraryDependencies += "org.scala-js" % "scalajs-library_2.11" % "0.6.13",
+  libraryDependencies += "org.scala-js" % "scalajs-library_2.11" % "0.6.15",
   libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.8" % "provided"
 )
 
@@ -73,11 +74,10 @@ lazy val jscalaAnnots = (project in file("jscala-annots")).settings(buildSetting
 lazy val examples: Project = (project in file("jscala-examples")).settings(buildSettings: _*).settings(
   name := "jscala-examples",
   tetrisTask,
-  libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test",
-  libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.13.3" % "test",
-  libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4",
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test",
+  libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.13.5" % "test",
   libraryDependencies += "org.scala-js" % "scalajs-dom_sjs0.6_2.11" % "0.9.1",
-  libraryDependencies += "be.doeraene" % "scalajs-jquery_sjs0.6_2.11" % "0.9.0",
-  libraryDependencies += "com.typesafe.play" %% "play-json" % "2.5.0",
+  libraryDependencies += "be.doeraene" % "scalajs-jquery_sjs0.6_2.11" % "0.9.1",
+  libraryDependencies += "com.typesafe.play" %% "play-json" % "2.6.0-M6",
   libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.8"
 ).dependsOn(jscalaAnnots)
