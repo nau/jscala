@@ -7,6 +7,8 @@ import java.io.{StringReader, StringWriter}
 
 import org.mozilla.javascript.ErrorReporter
 
+import scala.reflect.macros.blackbox
+
 package object jscala {
   import language.experimental.macros
   import language.implicitConversions
@@ -184,11 +186,11 @@ package object jscala {
   def javascriptDebug(expr: Any): JsAst = macro Macros.javascriptDebugImpl
 
   object Macros {
-    def javascriptImpl(c: Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
+    def javascriptImpl(c: blackbox.Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
       val parser = new ScalaToJsConverter[c.type](c, debug = false)
       c.Expr(parser.convert(expr.tree))
     }
-    def javascriptStringImpl(c: Context)(expr: c.Expr[Any]): c.Expr[String] = {
+    def javascriptStringImpl(c: blackbox.Context)(expr: c.Expr[Any]): c.Expr[String] = {
       import c.universe._
       val parser = new ScalaToJsConverter[c.type](c, debug = false)
       val jsAst = parser.convert(expr.tree)
@@ -196,7 +198,7 @@ package object jscala {
       c.Expr[String](q"$str")
     }
 
-    def javascriptDebugImpl(c: Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
+    def javascriptDebugImpl(c: blackbox.Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
       val parser = new ScalaToJsConverter[c.type](c, debug = true)
       c.Expr(parser.convert(expr.tree))
     }
