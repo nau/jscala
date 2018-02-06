@@ -1,0 +1,5 @@
+group 'com.prezi.services'
+
+task wrapper(type: Wrapper) {
+	gradleVersion = '2.13'
+}

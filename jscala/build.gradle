@@ -1,0 +1,89 @@
+// Gradle plugins
+buildscript {
+	repositories {
+		mavenLocal()	// to be able to develop/test our custom plugins
+		mavenCentral()	// for 3rd party plugins
+		maven {			// prezi's repositories
+			credentials {
+				username nexusUser
+				password nexusPassword
+			}
+			url "https://artifactory.prezi.com/plugins"
+		}
+		ivy {									// prezi's repositories
+			credentials {
+				username nexusUser
+				password nexusPassword
+			}
+			url "https://artifactory.prezi.com/prezi-scala-release-local"
+		}
+	}
+	dependencies {
+		classpath(
+			// Prezi plugins for gradle
+			[group: "com.prezi.scala.gradle", name: "gradle-scala-service-plugin", version: "5.+"],	// Common plugin for Scala based backend services at Prezi
+		)
+	}
+}
+
+// General project properties
+group 'com.prezi.services'
+
+apply plugin: 'scala-library'
+
+// Project definition
+// ------------------
+
+// Repositories 
+repositories {
+	ivy {									// prezi's repositories
+		credentials {
+			username nexusUser
+			password nexusPassword
+		}
+		url "https://artifactory.prezi.com/prezi-scala-release-local"
+	}
+	mavenCentral()							// for 3rd party libraries
+}
+
+dependencies {
+	// Compile-time dependencies for the service
+	compile (
+		scalaDependency ([group: 'org.scala-js', name: 'scalajs-library', version: '0.6.19']),
+		scalaDependency ([group: 'org.scala-js', name: 'scalajs-dom_sjs0.6', version: '0.9.3']),
+		[group: "com.yahoo.platform.yui", name: "yuicompressor", version: "2.4.8"],
+	)
+
+	// Compile-time dependencies for the unit tests
+	testCompile (
+		[group: "junit", name: "junit", version: "4.12"],
+		scalaDependency ([group: "org.specs2", name: "specs2-core", version: "3.8.7"]),
+		scalaDependency ([group: "org.specs2", name: "specs2-junit", version: "3.8.7"]),
+		// scalaDependency ([group: "org.specs2", name: "specs2-scalacheck", version: "3.8.7"])
+	)
+
+	// Runtime-only dependencies
+	runtime (
+	)
+}
+
+// scala compiler options
+tasks.withType(ScalaCompile) {
+	scalaCompileOptions.additionalParameters += [
+		"-unchecked",
+		"-deprecation",
+		"-feature",
+		"-encoding", "utf8"
+	]
+}
+
+// specs2 console logging
+test {
+	testLogging.showStandardStreams = true
+	systemProperty "specs2.commandline", "console"
+}
+
+
+scalaStyle {
+    skip = true
+}
