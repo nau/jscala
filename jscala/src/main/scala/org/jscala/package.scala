@@ -180,6 +180,10 @@ package object jscala {
    */
   def javascript(expr: Any): JsAst = macro Macros.javascriptImpl
   /**
+    * Macro that generates JavaScript AST representation of its argument if it's a JavaScript expression
+    */
+  def javascriptExpr(expr: Any): JsExpr = macro Macros.javascriptExprImpl
+  /**
    * Macro that generates JavaScript String representation of its argument
    */
   def javascriptString(expr: Any): String = macro Macros.javascriptStringImpl
@@ -189,6 +193,35 @@ package object jscala {
     def javascriptImpl(c: blackbox.Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
       val parser = new ScalaToJsConverter[c.type](c, debug = false)
       c.Expr(parser.convert(expr.tree))
+    }
+    def javascriptExprImpl(c: blackbox.Context)(expr: c.Expr[Any]): c.Expr[JsExpr] = {
+      import c.universe._
+
+      val parser = new ScalaToJsConverter[c.type](c, debug = false)
+      val converted = parser.convert(expr.tree)
+
+      def fail = {
+        c.abort(expr.tree.pos, "Not a javascript expression!")
+      }
+
+      converted match {
+        case ast@q"org.jscala.$_(...$_)" =>
+          val checked = c.typecheck(ast)
+          if (checked.tpe <:< typeOf[JsExpr]) {
+            c.Expr(checked)
+          } else {
+            fail
+          }
+        case q"$ast.asInstanceOf[org.jscala.JsAst with $rest]" =>
+          val checked = c.typecheck(ast)
+          if (checked.tpe <:< typeOf[JsExpr]) {
+            c.Expr(q"$checked.asInstanceOf[org.jscala.JsExpr with $rest]")
+          } else {
+            fail
+          }
+        case _ =>
+          fail
+      }
     }
     def javascriptStringImpl(c: blackbox.Context)(expr: c.Expr[Any]): c.Expr[String] = {
       import c.universe._
