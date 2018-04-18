@@ -1,4 +1,36 @@
-rootProject.name = 'jscala'
+// Gradle plugins
+buildscript {
+	repositories {
+		mavenLocal()	// to be able to develop/test our custom plugins
+		maven {			// prezi's repositories
+			credentials {
+				username nexusUser
+				password nexusPassword
+			}
+			url "https://artifactory.prezi.com/plugins"
+		}
+		ivy {									// prezi's repositories
+			credentials {
+				username nexusUser
+				password nexusPassword
+			}
+			url "https://artifactory.prezi.com/prezi-scala-release-local"
+		}
+	}
+
+	dependencies {
+		classpath(
+			// Prezi plugins for gradle
+			[group: "com.prezi.scala.gradle", name: "gradle-scala-service-plugin", version: "[7.0, )"],	// Common plugin for Scala based backend services at Prezi
+		)
+	}
+}
+
+rootProject.name = com.prezi.scala.gradle.Naming.libraryName(buildscript, "jscala")
 
 include 'jscala'
 include 'jscala-annots'
+
+rootProject.children.each {
+    it.name = com.prezi.scala.gradle.Naming.libraryName(buildscript, it.name)
+}

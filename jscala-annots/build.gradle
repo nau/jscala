@@ -21,7 +21,7 @@ buildscript {
 	dependencies {
 		classpath(
 			// Prezi plugins for gradle
-			[group: "com.prezi.scala.gradle", name: "gradle-scala-service-plugin", version: "5.+"],	// Common plugin for Scala based backend services at Prezi
+			[group: "com.prezi.scala.gradle", name: "gradle-scala-service-plugin", version: "[7.0,)"],	// Common plugin for Scala based backend services at Prezi
 		)
 	}
 }
@@ -52,15 +52,15 @@ dependencies {
 		scalaDependency ([group: 'org.scala-js', name: 'scalajs-library', version: '0.6+']),
 		scalaDependency ([group: 'org.scala-js', name: 'scalajs-dom_sjs0.6', version: '0.9.3']),
 		[group: "org.scala-lang", name: "scala-reflect", version: "$scalaVersion"],
-		relativeProject(":jscala")
+		relativeProject(com.prezi.scala.gradle.Naming.libraryName(buildscript, ":jscala")),
 	)
 
 	// Compile-time dependencies for the unit tests
 	testCompile (
 		[group: "junit", name: "junit", version: "4.12"],
-		scalaDependency ([group: "org.specs2", name: "specs2-core", version: "3.8.7"]),
-		scalaDependency ([group: "org.specs2", name: "specs2-junit", version: "3.8.7"]),
-		// scalaDependency ([group: "org.specs2", name: "specs2-scalacheck", version: "3.8.7"])
+		scalaDependency ([group: "org.specs2", name: "specs2-core", version: specs2Version]),
+		scalaDependency ([group: "org.specs2", name: "specs2-junit", version: specs2Version]),
+		// scalaDependency ([group: "org.specs2", name: "specs2-scalacheck", version: specs2Version])
 	)
 
 	// Runtime-only dependencies
