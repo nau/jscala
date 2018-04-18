@@ -7,6 +7,8 @@ import java.io.{StringReader, StringWriter}
 
 import org.mozilla.javascript.ErrorReporter
 
+import scala.reflect.macros.blackbox
+
 package object jscala {
   import language.experimental.macros
   import language.implicitConversions
@@ -178,17 +180,50 @@ package object jscala {
    */
   def javascript(expr: Any): JsAst = macro Macros.javascriptImpl
   /**
+    * Macro that generates JavaScript AST representation of its argument if it's a JavaScript expression
+    */
+  def javascriptExpr(expr: Any): JsExpr = macro Macros.javascriptExprImpl
+  /**
    * Macro that generates JavaScript String representation of its argument
    */
   def javascriptString(expr: Any): String = macro Macros.javascriptStringImpl
   def javascriptDebug(expr: Any): JsAst = macro Macros.javascriptDebugImpl
 
   object Macros {
-    def javascriptImpl(c: Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
+    def javascriptImpl(c: blackbox.Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
       val parser = new ScalaToJsConverter[c.type](c, debug = false)
       c.Expr(parser.convert(expr.tree))
     }
-    def javascriptStringImpl(c: Context)(expr: c.Expr[Any]): c.Expr[String] = {
+    def javascriptExprImpl(c: blackbox.Context)(expr: c.Expr[Any]): c.Expr[JsExpr] = {
+      import c.universe._
+
+      val parser = new ScalaToJsConverter[c.type](c, debug = false)
+      val converted = parser.convert(expr.tree)
+
+      def fail = {
+        c.abort(expr.tree.pos, "Not a javascript expression!")
+      }
+
+      converted match {
+        case ast@q"org.jscala.$_(...$_)" =>
+          val checked = c.typecheck(ast)
+          if (checked.tpe <:< typeOf[JsExpr]) {
+            c.Expr(checked)
+          } else {
+            fail
+          }
+        case q"$ast.asInstanceOf[org.jscala.JsAst with $rest]" =>
+          val checked = c.typecheck(ast)
+          if (checked.tpe <:< typeOf[JsExpr]) {
+            c.Expr(q"$checked.asInstanceOf[org.jscala.JsExpr with $rest]")
+          } else {
+            fail
+          }
+        case _ =>
+          fail
+      }
+    }
+    def javascriptStringImpl(c: blackbox.Context)(expr: c.Expr[Any]): c.Expr[String] = {
       import c.universe._
       val parser = new ScalaToJsConverter[c.type](c, debug = false)
       val jsAst = parser.convert(expr.tree)
@@ -196,7 +231,7 @@ package object jscala {
       c.Expr[String](q"$str")
     }
 
-    def javascriptDebugImpl(c: Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
+    def javascriptDebugImpl(c: blackbox.Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
       val parser = new ScalaToJsConverter[c.type](c, debug = true)
       c.Expr(parser.convert(expr.tree))
     }

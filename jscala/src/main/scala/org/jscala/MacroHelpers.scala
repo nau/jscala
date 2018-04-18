@@ -43,6 +43,9 @@ trait MacroHelpers[C <: blackbox.Context] {
   protected lazy val setSym = c.mirror.staticClass("scala.collection.Set")
   protected lazy val functionTypes = List(typeOf[Function1[_,_]], typeOf[Function2[_, _,_]], typeOf[Function3[_,_,_,_]], typeOf[Function4[_,_,_,_,_]])
 
+  protected lazy val jsNativeAnnotation = c.typeOf[scala.scalajs.js.native]
+  protected lazy val jsGlobalAnnotation = c.typeOf[scala.scalajs.js.annotation.JSGlobal]
+
 
   protected def select(p: String, init: String => Tree = s => Ident(TermName(s))): Tree = {
     p.split("\\.").foldLeft(EmptyTree) {

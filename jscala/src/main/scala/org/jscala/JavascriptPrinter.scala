@@ -43,7 +43,8 @@ object JavascriptPrinter {
       case JsBinOp(operator, lhs, rhs: JsTernary) => s"${s(lhs)} $operator ${s(rhs)}"
       case JsBinOp(operator, lhs, rhs: JsBinOp) => s"${p(lhs)} $operator ${s(rhs)}"
       case JsBinOp(operator, lhs, rhs)          => s"${p(lhs)} $operator ${p(rhs)}"
-      case JsNew(call)                          => s"new ${p(call)}"
+      case JsNew(call)                          =>
+        s"new ${p(call)}"
       case expr@JsCall(JsSelect(callee: JsLazy[_], "apply"), params) => s"""(${p(callee)})(${params.map(p(_)).mkString(", ")})"""
       case JsCall(JsSelect(callee: JsAnonFunDecl, "apply"), params) => s"""(${p(callee)})(${params.map(p(_)).mkString(", ")})"""
       case JsCall(callee, params)               => s"""${p(callee)}(${params.map(p(_)).mkString(", ")})"""
@@ -81,6 +82,7 @@ object JavascriptPrinter {
       case JsReturn(jsExpr)                     => s"return ${p(jsExpr)}"
       case JsUnit                               => ""
       case JsStmts(stmts)                       => p(stmts.head) + ";\n" + stmts.tail.map(p4(_)).mkString(";\n")
+      case simplified: JsAst                    => s"<unsupported: $simplified>"
     }
   }
 }
