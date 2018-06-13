@@ -45,6 +45,19 @@ class JsSpecs extends SpecificationWithJUnit {
           |  SomethingGlobal.close();
           |}""".stripMargin
     }
+
+    "handle escaped backslash" in {
+      import org.jscala._
+      val str = "\\hello"
+      val js = javascript {
+        val x = inject(str)
+      }
+      js.asString ===
+        """{
+          |  var x = "\\hello";
+          |}""".stripMargin
+
+    }
   }
 
 }
