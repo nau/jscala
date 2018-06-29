@@ -1,7 +1,8 @@
 package org.jscala
 
+import org.apache.commons.text.StringEscapeUtils
+
 object JavascriptPrinter {
-  private[this] val substitutions = Map("\\\"".r -> "\\\\\"", "\\n".r -> "\\\\n", "\\r".r -> "\\\\r", "\\t".r -> "\\\\t")
   def simplify(ast: JsAst): JsAst = ast match {
     case JsBlock(stmts) => JsBlock(stmts.filter(_ != JsUnit))
     case JsCase(const, JsBlock(List(stmt))) => JsCase(const, stmt)
@@ -27,7 +28,7 @@ object JavascriptPrinter {
       case JsLazy(f)                            => p(f())
       case JsNull                               => "null"
       case JsBool(value)                        => value.toString
-      case JsString(value)                      => "\"" + substitutions.foldLeft(value){case (v, (r, s)) => r.replaceAllIn(v, s)} + "\""
+      case JsString(value)                      => "\"" + StringEscapeUtils.escapeEcmaScript(value) + "\""
       case JsNum(value, true)                   => value.toString
       case JsNum(value, false)                  => value.toLong.toString
       case JsArray(values)                      => values.map(p).mkString("[", ", ", "]")
@@ -43,7 +44,8 @@ object JavascriptPrinter {
       case JsBinOp(operator, lhs, rhs: JsTernary) => s"${s(lhs)} $operator ${s(rhs)}"
       case JsBinOp(operator, lhs, rhs: JsBinOp) => s"${p(lhs)} $operator ${s(rhs)}"
       case JsBinOp(operator, lhs, rhs)          => s"${p(lhs)} $operator ${p(rhs)}"
-      case JsNew(call)                          => s"new ${p(call)}"
+      case JsNew(call)                          =>
+        s"new ${p(call)}"
       case expr@JsCall(JsSelect(callee: JsLazy[_], "apply"), params) => s"""(${p(callee)})(${params.map(p(_)).mkString(", ")})"""
       case JsCall(JsSelect(callee: JsAnonFunDecl, "apply"), params) => s"""(${p(callee)})(${params.map(p(_)).mkString(", ")})"""
       case JsCall(callee, params)               => s"""${p(callee)}(${params.map(p(_)).mkString(", ")})"""
@@ -81,6 +83,7 @@ object JavascriptPrinter {
       case JsReturn(jsExpr)                     => s"return ${p(jsExpr)}"
       case JsUnit                               => ""
       case JsStmts(stmts)                       => p(stmts.head) + ";\n" + stmts.tail.map(p4(_)).mkString(";\n")
+      case simplified: JsAst                    => s"<unsupported: $simplified>"
     }
   }
 }

@@ -80,6 +80,21 @@ trait BasisConverter[C <: blackbox.Context] extends MacroHelpers[C] {
       q"org.jscala.JsString($str)"
   }
 
+  private def isGlobalJsObject(qualifier: Tree): Boolean = {
+    def isJsNativeAnnotation(annotation: Annotation): Boolean = {
+      // scala.scalajs.js.native
+      annotation.tree.tpe =:= jsNativeAnnotation
+    }
+
+    def isJsGlobalAnnotation(annotation: Annotation): Boolean = {
+      // scala.scalajs.js.annotation.JSGlobal
+      annotation.tree.tpe =:= jsGlobalAnnotation
+    }
+
+    qualifier.symbol.annotations.exists(isJsNativeAnnotation) &&
+    qualifier.symbol.annotations.exists(isJsGlobalAnnotation)
+  }
+
   protected lazy val jsSelect: ToExpr[JsExpr] = {
     case Select(Select(Select(Ident(Name("scala")), Name("scalajs")), Name("js")), Name(name)) => q"""org.jscala.JsIdent($name)"""
     //      case q"scala.scalajs.js.$name" => q"""org.jscala.JsIdent($name)"""
@@ -91,7 +106,9 @@ trait BasisConverter[C <: blackbox.Context] extends MacroHelpers[C] {
     case Select(Select(Ident(Name("org")), Name("jscala")), Name(name)) =>
       q"org.jscala.JsIdent($name)"
     // objectname.$ident => $ident
-    case s@Select(q@Ident(_), name) if q.symbol.isModule => jsExprOrDie(Ident(name))
+    case s@Select(q, name) if isGlobalJsObject(q) =>
+      val objName = showRaw(q.tpe.typeSymbol.name)
+      q"org.jscala.JsSelect(org.jscala.JsIdent($objName), ${name.decodedName.toString})"
     case Select(q, name) =>
       q"org.jscala.JsSelect(${jsExprOrDie(q)}, ${name.decodedName.toString})"
   }
@@ -179,9 +196,34 @@ trait BasisConverter[C <: blackbox.Context] extends MacroHelpers[C] {
 
   protected def jsExpr: ToExpr[JsExpr]
 
-  protected val jsExprOrDie: ToExpr[JsExpr] = jsExpr orElse die("Unsupported syntax")
+  protected val jsExprOrDie: ToExpr[JsExpr] =
+    new PartialFunction[Tree, Tree] {
+      val pft: ToExpr[JsExpr] = jsExpr orElse die("Unsupported syntax")
+
+      override def isDefinedAt(x: c.universe.Tree) = pft.isDefinedAt(x)
+
+      override def apply(v1: c.universe.Tree) = {
+//        println(s"Converting expression ${showRaw(v1)}")
+        val res = pft.apply(v1)
+//        println(s"Converted expression ${showRaw(v1)} to ${res}")
+
+        res
+      }
+    }
 
   protected def jsStmt: ToExpr[JsStmt]
 
-  protected val jsStmtOrDie: ToExpr[JsStmt] = jsStmt orElse die("Unsupported syntax")
+  protected val jsStmtOrDie: ToExpr[JsStmt] = new PartialFunction[Tree, Tree] {
+    val pft: ToExpr[JsStmt] = jsStmt orElse die("Unsupported syntax")
+
+    override def isDefinedAt(x: c.universe.Tree) = pft.isDefinedAt(x)
+
+    override def apply(v1: c.universe.Tree) = {
+//      println(s"Converting statement ${showRaw(v1)}")
+      val res = pft.apply(v1)
+//      println(s"Converted statement ${showRaw(v1)} to ${res}")
+
+      res
+    }
+  }
 }
