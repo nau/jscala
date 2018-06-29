@@ -52,6 +52,7 @@ dependencies {
 		scalaDependency ([group: 'org.scala-js', name: 'scalajs-library', version: '0.6.19']),
 		scalaDependency ([group: 'org.scala-js', name: 'scalajs-dom_sjs0.6', version: '0.9.3']),
 		[group: "com.yahoo.platform.yui", name: "yuicompressor", version: "2.4.8"],
+		[group: "org.apache.commons", name: "commons-text", version: "1.4"]
 	)
 
 	// Compile-time dependencies for the unit tests

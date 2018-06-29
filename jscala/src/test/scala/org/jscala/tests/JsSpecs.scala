@@ -58,6 +58,32 @@ class JsSpecs extends SpecificationWithJUnit {
           |}""".stripMargin
 
     }
+
+    "handle double quote" in {
+      import org.jscala._
+      val str = "\"hello"
+      val js = javascript {
+        val x = inject(str)
+      }
+      js.asString ===
+        """{
+          |  var x = "\"hello";
+          |}""".stripMargin
+
+    }
+
+    "handle escaped backslash and double quote" in {
+      import org.jscala._
+      val str = "\\\"hello"
+      val js = javascript {
+        val x = inject(str)
+      }
+      js.asString ===
+        """{
+          |  var x = "\\\"hello";
+          |}""".stripMargin
+
+    }
   }
 
 }
