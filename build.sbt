@@ -1,22 +1,19 @@
 import java.awt.Desktop
-import sbt._
-import sbt.Keys._
 
 lazy val ossSnapshots = "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
 lazy val ossStaging   = "Sonatype OSS Staging" at "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
-lazy val buildSettings = Defaults.coreDefaultSettings ++ Seq(
+lazy val buildSettings = Seq(
     organization := "org.jscala",
     version := "0.5-SNAPSHOT",
-    crossScalaVersions := Seq("2.11.8", "2.12.1"),
-    scalaVersion := "2.12.1",
+    crossScalaVersions := Seq("2.11.12", "2.12.11", "2.13.2"),
+    scalaVersion := "2.13.2",
     resolvers += Resolver.sonatypeRepo("snapshots"),
     credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
-    publishTo <<= version((v: String) => Some( if (v.trim endsWith "SNAPSHOT") ossSnapshots else ossStaging)),
+    publishTo := { Some( if (version.value.trim endsWith "SNAPSHOT") ossSnapshots else ossStaging)},
     publishMavenStyle := true,
     publishArtifact in Test := false,
     pomIncludeRepository := (_ => false),
     pomExtra := extraPom,
-    addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
@@ -24,8 +21,21 @@ lazy val buildSettings = Defaults.coreDefaultSettings ++ Seq(
 //      "-Ystatistics",
 //      "-verbose",
       "-language:_"
-	  )
+	  ),
+    Compile / scalacOptions ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2, n)) if n >= 13 => "-Ymacro-annotations" :: Nil
+        case _ => Nil
+      }
+    },
+    libraryDependencies ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2, n)) if n >= 13 => Nil
+        case _ => compilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full) :: Nil
+      }
+    }
   )
+
 
   def extraPom =
     <url>http://jscala.org</url>
@@ -48,36 +58,39 @@ lazy val buildSettings = Defaults.coreDefaultSettings ++ Seq(
         </developer>
       </developers>
 
-val tetris = TaskKey[Unit]("tetris", "Translates tetris Scala code to Javascript and runs the game")
+val tetris = taskKey[Unit]("Translates tetris Scala code to Javascript and runs the game")
 
-val tetrisTask = tetris <<= (baseDirectory, fullClasspath in Runtime, runner in run, streams) map { (bd, cp, r, s) =>
-  r.run("org.jscalaexample.Tetris", Attributed.data(cp), Seq((bd / "javascript-tetris" / "tetris.js").toString), s.log)
-  Desktop.getDesktop.browse(bd / "javascript-tetris" / "index.html" toURI)
-}
-
-lazy val root: Project = (project in file(".")).settings(buildSettings: _*).settings(
-  name := "jscala"
+lazy val root = (project in file(".")).settings(buildSettings: _*).settings(
+  name := "jscala",
+  crossScalaVersions := Nil
 ) aggregate(jscala, jscalaAnnots, examples)
-  
+
 lazy val jscala = (project in file("jscala")).settings(buildSettings:_*).settings(
   name := "jscala-macros",
-  libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ % "provided"),
+  libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
   libraryDependencies += "org.scala-js" % "scalajs-library_2.11" % "0.6.15",
   libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.8" % "provided"
 )
 
 lazy val jscalaAnnots = (project in file("jscala-annots")).settings(buildSettings: _*).settings(
   name := "jscala-annots",
-  libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ % "provided")
+  libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided"
 ).dependsOn(jscala)
 
 lazy val examples: Project = (project in file("jscala-examples")).settings(buildSettings: _*).settings(
   name := "jscala-examples",
-  tetrisTask,
-  libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test",
-  libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.13.5" % "test",
+  tetris := {
+    runner.value.run(
+      "org.jscalaexample.Tetris",
+      Attributed.data((Runtime / fullClasspath).value), Seq((baseDirectory.value / "javascript-tetris" / "tetris.js").toString),
+      streams.value.log
+    )
+    Desktop.getDesktop.browse(baseDirectory.value / "javascript-tetris" / "index.html" toURI)
+  },
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.8" % "test",
+  libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.14.3" % "test",
   libraryDependencies += "org.scala-js" % "scalajs-dom_sjs0.6_2.11" % "0.9.1",
   libraryDependencies += "be.doeraene" % "scalajs-jquery_sjs0.6_2.11" % "0.9.1",
-  libraryDependencies += "com.typesafe.play" %% "play-json" % "2.6.0-M6",
+  libraryDependencies += "com.typesafe.play" %% "play-json" % "2.7.4",
   libraryDependencies += "com.yahoo.platform.yui" % "yuicompressor" % "2.4.8"
 ).dependsOn(jscalaAnnots)

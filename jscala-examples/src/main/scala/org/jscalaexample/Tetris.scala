@@ -21,9 +21,9 @@ object Tetris {
       //-------------------------------------------------------------------------
 
       def get(id: String) = document.getElementById(id).as[HTMLElement]
-      def hide(id: String) { get(id).style.visibility = "hidden"; }
-      def show(id: String) { get(id).style.visibility = null;     }
-      def html(id: String, html: String) { get(id).innerHTML = html;            }
+      def hide(id: String): Unit = { get(id).style.visibility = "hidden"; }
+      def show(id: String): Unit = { get(id).style.visibility = null;     }
+      def html(id: String, html: String): Unit = { get(id).innerHTML = html;            }
 
       def timestamp() = { new Date().getTime() }
       def random(min: Int, max: Int) = { (min + (Math.random() * (max - min)));            }
@@ -103,7 +103,7 @@ object Tetris {
       // do the bit manipulation and iterate through each
       // occupied block (x,y) for a given piece
       //------------------------------------------------
-      def eachblock(`type`: Block, x: Int, y: Int, dir: Int, fn: (Int, Int) => Unit) {
+      def eachblock(`type`: Block, x: Int, y: Int, dir: Int, fn: (Int, Int) => Unit): Unit = {
         var row = 0
         var col = 0
         val blocks = `type`.blocks(dir)
@@ -150,12 +150,12 @@ object Tetris {
       // GAME LOOP
       //-------------------------------------------------------------------------
 
-      def run() {
+      def run(): Unit = {
         showStats()
         addEvents() // attach keydown and resize events
         var last = timestamp()
         var now = timestamp()
-        def frame() {
+        def frame(): Unit = {
           now = timestamp()
           update(Math.min(1, (now - last) / 1000.0).as[Int]) // using requestAnimationFrame have to be able to handle large delta"s caused when it "hibernates" in a background or non-visible tab
           draw()
@@ -168,17 +168,17 @@ object Tetris {
         frame()  // start the first frame
       }
 
-      def showStats() {
+      def showStats(): Unit = {
         stats.domElement.id = "stats"
         get("menu").appendChild(stats.domElement.as[Node])
       }
 
-      def addEvents() {
+      def addEvents(): Unit = {
         document.addEventListener("keydown", keydown _, false)
         window.addEventListener("resize", resize _, false)
       }
 
-      def resize(ev: JsDynamic) {
+      def resize(ev: JsDynamic): Unit = {
         canvas.width   = canvas.clientWidth  // set canvas logical size equal to its physical size
         canvas.height  = canvas.clientHeight // (ditto)
         ucanvas.width  = ucanvas.clientWidth
@@ -189,7 +189,7 @@ object Tetris {
         invalidateNext()
       }
 
-      def keydown(ev: JsDynamic) {
+      def keydown(ev: JsDynamic): Unit = {
         var handled = false
         if (playing) {
           ev.keyCode.as[Int] match {
@@ -236,7 +236,7 @@ object Tetris {
         blocks(x)(y) = `type`
         invalidate()
       }
-      def clearBlocks()          { blocks = JArray(); invalidate(); }
+      def clearBlocks(): Unit =          { blocks = JArray(); invalidate(); }
       def clearActions() = { actions = JArray() }
       def setCurrentPiece(piece: Piece) = {
         val n = if (piece != null) piece else randomPiece()
@@ -249,7 +249,7 @@ object Tetris {
         invalidateNext()
       }
 
-      def reset() {
+      def reset(): Unit = {
         dt = 0
         clearActions()
         clearBlocks()
@@ -259,7 +259,7 @@ object Tetris {
         setNextPiece()
       }
 
-      def update(idt: Int) {
+      def update(idt: Int): Unit = {
         if (playing) {
           if (vscore < score)
             setVisualScore(vscore + 1)
@@ -272,7 +272,7 @@ object Tetris {
         }
       }
 
-      def handle(action: Int) {
+      def handle(action: Int): Unit = {
         action match {
           case DIR.LEFT =>  move(DIR.LEFT)
           case DIR.RIGHT => move(DIR.RIGHT)
@@ -300,7 +300,7 @@ object Tetris {
         }
       }
 
-      def rotate() {
+      def rotate(): Unit = {
         val newdir = if (current.dir == DIR.MAX) DIR.MIN else current.dir + 1
         if (unoccupied(current.`type`, current.x, current.y, newdir)) {
           current.dir = newdir
@@ -308,7 +308,7 @@ object Tetris {
         }
       }
 
-      def drop() {
+      def drop(): Unit = {
         if (!move(DIR.DOWN)) {
           addScore(10)
           dropPiece()
@@ -322,13 +322,13 @@ object Tetris {
         }
       }
 
-      def dropPiece() {
+      def dropPiece(): Unit = {
         eachblock(current.`type`, current.x, current.y, current.dir, (x, y) => {
           setBlock(x, y, current.`type`)
         })
       }
 
-      def removeLines() {
+      def removeLines(): Unit = {
         var x = 0
         var y = ny
         var complete = false
@@ -354,7 +354,7 @@ object Tetris {
         }
       }
 
-      def removeLine(n: Int) {
+      def removeLine(n: Int): Unit = {
         var x = 0
         var y = n
         while (y >= 0) {
@@ -375,12 +375,12 @@ object Tetris {
       class Invalid(var court: Boolean, var next: Boolean, var score: Boolean, var rows: Boolean)
       val invalid = new Invalid(false, false, false, false)
 
-      def invalidate()         { invalid.court  = true }
-      def invalidateNext()     { invalid.next   = true }
-      def invalidateScore()    { invalid.score  = true }
-      def invalidateRows()     { invalid.rows   = true }
+      def invalidate(): Unit =         { invalid.court  = true }
+      def invalidateNext(): Unit =     { invalid.next   = true }
+      def invalidateScore(): Unit =    { invalid.score  = true }
+      def invalidateRows(): Unit =     { invalid.rows   = true }
 
-      def draw() {
+      def draw(): Unit = {
         ctx.save()
         ctx.lineWidth = 1
         ctx.translate(0.5, 0.5) // for crisp 1px black lines
@@ -391,7 +391,7 @@ object Tetris {
         ctx.restore()
       }
 
-      def drawCourt() {
+      def drawCourt(): Unit = {
         if (invalid.court) {
           ctx.clearRect(0, 0, canvas.width, canvas.height)
           if (playing)
@@ -414,7 +414,7 @@ object Tetris {
         }
       }
 
-      def drawNext() {
+      def drawNext(): Unit = {
         if (invalid.next) {
           val padding = (nu - next.`type`.size) / 2 // half-arsed attempt at centering next piece display
           uctx.save()
@@ -428,7 +428,7 @@ object Tetris {
         }
       }
 
-      def drawScore() {
+      def drawScore(): Unit = {
         if (invalid.score) {
           val text: JString = "00000" + vscore
           html("score", text.slice(-5).toString())
@@ -436,18 +436,18 @@ object Tetris {
         }
       }
 
-      def drawRows() {
+      def drawRows(): Unit = {
         if (invalid.rows) {
           html("rows", rows.toString())
           invalid.rows = false
         }
       }
 
-      def drawPiece(ctx: JsDynamic, `type`: Block, x: Int, y: Int, dir: Int) {
+      def drawPiece(ctx: JsDynamic, `type`: Block, x: Int, y: Int, dir: Int): Unit = {
         eachblock(`type`, x, y, dir, (x, y) => drawBlock(ctx, x, y, `type`.color))
       }
 
-      def drawBlock(ctx: JsDynamic, x: Int, y: Int, color: String) {
+      def drawBlock(ctx: JsDynamic, x: Int, y: Int, color: String): Unit = {
         ctx.fillStyle = color
         ctx.fillRect(x*dx, y*dy, dx, dy)
         ctx.strokeRect(x*dx, y*dy, dx, dy)
@@ -460,7 +460,7 @@ object Tetris {
     }
   }
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     val path = new File(args(0))
     val ast = tetris
     val fw = new FileWriter(path)

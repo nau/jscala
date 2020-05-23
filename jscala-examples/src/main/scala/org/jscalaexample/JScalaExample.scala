@@ -7,7 +7,7 @@ import org.scalajs.dom._
 case class User(name: String, id: Int)
 
 object JScalaExample {
-  def domManipulations() {
+  def domManipulations(): Unit = {
     val html = javascript {
       val node = document.getElementById("myList2").lastChild
       document.getElementById("myList1").appendChild(node)
@@ -19,9 +19,9 @@ object JScalaExample {
     println(html)
   }
 
-  def hello() {
+  def hello(): Unit = {
     val ast = javascript {
-      def main(args: Array[String]) {
+      def main(args: Array[String]): Unit = {
         val language = if (args.length == 0) "EN" else args(0)
         val res = language match {
           case "EN" => "Hello!"
@@ -35,7 +35,7 @@ object JScalaExample {
     println(ast.asString)
   }
 
-  def browserStuff() {
+  def browserStuff(): Unit = {
     val js = javascript {
       window.location.href = "http://jscala.org"
       window.open("https://github.com")
@@ -44,7 +44,7 @@ object JScalaExample {
     println(js.asString)
   }
 
-  def shortExample() {
+  def shortExample(): Unit = {
     val scalaValue = "https://github.com/nau/jscala"
     def rand() = Random.nextInt(5).toJs
     val $ = new JsDynamic {}
@@ -62,7 +62,7 @@ object JScalaExample {
     println(js.asString)
   }
 
-  def complexExample() {
+  def complexExample(): Unit = {
     val js = javascript {
       window.setTimeout(() => {
         val r = new RegExp("d.*", "g")
@@ -93,7 +93,7 @@ object JScalaExample {
     println(js.asString)
   }
 
-  def ajaxExample() {
+  def ajaxExample(): Unit = {
     val $ = new JsDynamic {}
     def ajaxCall(pageId: Int) = javascript {
       $.get("ajax/" + pageId, (data: String) => $("#someId").html(data))
@@ -107,10 +107,10 @@ object JScalaExample {
 
 
   import play.api.libs.json._
-  def readmeExample() {
+  def readmeExample(): Unit = {
     implicit val userJson = Json.format[User]
     @Javascript class Greeter {
-      def hello(u: User) {
+      def hello(u: User): Unit = {
         print(s"Hello, ${u.name} \n")
       }
     }
@@ -134,7 +134,7 @@ object JScalaExample {
   }
 
 
-  def astManipulation() {
+  def astManipulation(): Unit = {
     val vardef = JsVarDef("test", "Test".toJs).block
     val print = JsCall(JsIdent("print"), JsIdent("test") :: Nil)
     val ast = vardef ++ print
@@ -149,7 +149,7 @@ object JScalaExample {
      */
   }
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     domManipulations()
     browserStuff()
     complexExample()

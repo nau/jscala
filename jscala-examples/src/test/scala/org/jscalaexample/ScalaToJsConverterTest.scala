@@ -150,7 +150,7 @@ class ScalaToJsConverterTest extends FunSuite {
         a = a + 1
       } } === expected)
 
-    assert(js { def func1() {} } === JsFunDecl("func1", Nil, JsBlock(Nil)).block)
+    assert(js { def func1(): Unit = {} } === JsFunDecl("func1", Nil, JsBlock(Nil)).block)
     assert(js { def func2 = 5 } === JsFunDecl("func2", Nil, JsBlock(List(JsReturn(5.toJs)))).block)
     assert(js { def func3() = 5 } === JsFunDecl("func3", Nil, JsBlock(List(JsReturn(5.toJs)))).block)
     assert(js { def func4(a: String) = 5 } === JsFunDecl("func4", List("a"), JsBlock(List(JsReturn(5.toJs)))).block)
@@ -172,7 +172,7 @@ class ScalaToJsConverterTest extends FunSuite {
 
     val els = Some(JsCall(JsSelect(JsIdent("console"), "log"), List("a".toJs)))
     val func6Body = JsIf(JsBinOp(">", JsSelect(ja, "length"), 2.toJs), JsReturn(JsUnit), els).block
-    assert(js { def func6(a: String) {
+    assert(js { def func6(a: String): Unit = {
       if (a.length > 2) return else {
         console.log("a")
       }
@@ -237,10 +237,15 @@ class ScalaToJsConverterTest extends FunSuite {
       s"$a test"
       s"a = $a and string is ${a.toString}"
     }
+    val oldRes = JsBinOp("+", JsBinOp("+", JsBinOp("+", "a = ".toJs, JsIdent("a")), " and string is ".toJs), JsCall(JsSelect(JsIdent("a"), "toString"), Nil))
+    val res = if (util.Properties.versionNumberString.startsWith("2.13")) oldRes else JsBinOp("+", oldRes, "".toJs)
     assert(ast === JsVarDef("a", 1.toJs) ++
       "string".toJs ++
-      JsBinOp("+", JsBinOp("+", "".toJs, JsIdent("a")), " test".toJs) ++
-      JsBinOp("+", JsBinOp("+", JsBinOp("+", JsBinOp("+", "a = ".toJs, JsIdent("a")), " and string is ".toJs), JsCall(JsSelect(JsIdent("a"), "toString"), Nil)), "".toJs))
+      JsBinOp("+", JsBinOp("+", "".toJs, JsIdent("a")), " test".toJs) ++ res
+    )
+
+//    JsBlock(List(JsVarDef(a,JsNum(1.0,false)), JsString(string), JsBinOp(+,JsBinOp(+,JsString(),JsIdent(a)),JsString( test)), JsBinOp(+,JsBinOp(+,JsBinOp(+, JsString(a = ),JsIdent(a)),JsString( and string is )),JsCall(JsSelect(JsIdent(a),toString),List()))))
+//    JsBlock(List(JsVarDef(a,JsNum(1.0,false)), JsString(string), JsBinOp(+,JsBinOp(+,JsString(),JsIdent(a)),JsString( test)), JsBinOp(+,JsBinOp(+,JsBinOp(+,JsBinOp(+,JsString(a = ),JsIdent(a)),JsString( and string is )),JsCall(JsSelect(JsIdent(a),toString),List())),JsString())))
   }
 
   test("Arrays") {

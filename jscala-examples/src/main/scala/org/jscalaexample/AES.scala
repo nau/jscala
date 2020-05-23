@@ -7,7 +7,7 @@ import org.jscala._
  */
 object AesExample {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     val data = Array(22, 13, 8, 123456789)
     println("Input data " + data.mkString(","))
     val key = Array(1, 1, 1, 1)
@@ -38,7 +38,7 @@ class Aes(val key: Array[Int]) {
 
   init()
 
-  private def precompute() {
+  private def precompute(): Unit = {
     val sbox = encTable(4)
     val sboxInv = decTable(4)
     val d = new Array[Int](256)
@@ -85,7 +85,7 @@ class Aes(val key: Array[Int]) {
     }
   }
 
-  private def init() {
+  private def init(): Unit = {
     precompute()
 
     var tmp = 0

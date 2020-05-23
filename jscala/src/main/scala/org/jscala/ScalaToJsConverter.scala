@@ -135,12 +135,20 @@ class ScalaToJsConverter[C <: blackbox.Context](val c: C, debug: Boolean) extend
   private lazy val jsCaseClassNamedArgs: ToExpr[JsExpr] = {
     case Block(valdefs, ap@Apply(expr, params)) if jsCaseClassApply.isDefinedAt(ap) =>
       val args = valdefs.map { case ValDef(_, TermName(n), _, init) => n -> init }.toMap
-      val orderedParams = params.map { case Ident(TermName(i)) => args(i) }
+      val orderedParams = params.map {
+        case Ident(TermName(i)) => args(i)
+        case other => other
+      }
       val tree1 = c.typecheck(Apply(expr, orderedParams))
       jsCaseClassApply(tree1)
   }
 
+  private lazy val jsAsdf: ToExpr[JsExpr] = {
+    case Typed(e, _) => jsExpr(e)
+  }
+
   protected lazy val jsExpr: ToExpr[JsExpr] = Seq(
+    jsAsdf,
     jsLit,
     jsUnaryOp,
     jsBinOp,

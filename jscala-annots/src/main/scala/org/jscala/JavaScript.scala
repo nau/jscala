@@ -1,14 +1,13 @@
 package org.jscala
 
 import scala.annotation.StaticAnnotation
-
-import language.experimental.macros
-import language.implicitConversions
-import scala.reflect.macros.Context
+import scala.language.experimental.macros
+import scala.language.implicitConversions
+import scala.reflect.macros.whitebox
 
 object MacroAnnotations {
 
-  class JavascriptAnnotation [C <: Context](val c: C, debug: Boolean) {
+  class JavascriptAnnotation [C <: whitebox.Context](val c: C, debug: Boolean) {
     import c.universe._
     def transform(annottees: c.Expr[Any]*): c.Expr[Any] = {
       val inputs = annottees.map(_.tree).toList
@@ -36,10 +35,10 @@ object MacroAnnotations {
     }
   }
 
-  def annotationImpl(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
-    import c.universe._
+  def annotationImpl(c: whitebox.Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
 
     var debug = false
+/*
     c.macroApplication match {
       case Apply(Select(Apply(Select(New(Ident(js)), termNames.CONSTRUCTOR), args), _), _) if js.decodedName.toString == "Javascript" =>
         args match {
@@ -52,13 +51,14 @@ object MacroAnnotations {
         }
       case _ => c.warning(c.enclosingPosition, "Can't parse @Javascript annotation arguments")
     }
+*/
 
     new JavascriptAnnotation[c.type](c, debug).transform(annottees:_*)
   }
 }
 
 class Javascript(val debug: Boolean = false) extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro MacroAnnotations.annotationImpl
+  def macroTransform(annottees: Any*): Any = macro MacroAnnotations.annotationImpl
 }
 
 class Transient extends StaticAnnotation

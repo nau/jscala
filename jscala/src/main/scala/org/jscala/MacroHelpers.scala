@@ -1,6 +1,5 @@
 package org.jscala
 
-import scala.collection.generic.{MapFactory, SeqFactory}
 import scala.reflect.macros.blackbox
 
 /**
@@ -10,16 +9,24 @@ import scala.reflect.macros.blackbox
  */
 trait MacroHelpers[C <: blackbox.Context] {
   val c: C
+
   import c.universe._
+
   type PFT[A] = PartialFunction[Tree, A]
   type ToExpr[A] = PFT[Tree]
 
   implicit class TreeHelper(tree: Tree) {
     def is(p: String): Boolean = tree.equalsStructure(select(p)) || tree.equalsStructure(select(p, s => This(TypeName(s))))
-    lazy val isArrow: Boolean = is("scala.Predef.ArrowAssoc") /*2.11.x*/
+
+    lazy val isArrow: Boolean = is("scala.Predef.ArrowAssoc")
+
+    /*2.11.x*/
     def raw: String = showRaw(tree)
+
     def isNum: Boolean = tree.tpe.widen weak_<:< typeOf[Long]
+
     def isCaseClass: Boolean = tree.tpe.typeSymbol.isClass && tree.tpe.typeSymbol.asClass.isCaseClass
+
     def caseMembers: List[c.universe.MethodSymbol] = tree.tpe.members.sorted.collect {
       case m: MethodSymbol if m.isCaseAccessor => m
     }
@@ -33,8 +40,12 @@ trait MacroHelpers[C <: blackbox.Context] {
     def unapply(name: Name): Option[String] = Some(name.decodedName.toString)
   }
 
-  protected lazy val seqFactorySym = c.typeOf[SeqFactory[Seq]].typeSymbol
-  protected lazy val mapFactorySym = c.typeOf[MapFactory[collection.Map]].typeSymbol
+  protected lazy val seqFactorySym = if (util.Properties.versionNumberString.startsWith("2.13"))
+    c.mirror.staticClass("scala.collection.SeqFactory")
+    else c.mirror.staticClass("scala.collection.generic.SeqFactory")
+  protected lazy val mapFactorySym = if (util.Properties.versionNumberString.startsWith("2.13"))
+    c.mirror.staticClass("scala.collection.MapFactory")
+  else c.mirror.staticClass("scala.collection.generic.MapFactory")
   protected lazy val arraySym = c.mirror.staticClass("scala.Array")
   protected lazy val jarraySym = c.mirror.staticClass("org.jscala.JArray")
   protected lazy val seqSym = c.mirror.staticClass("scala.collection.Seq")
@@ -50,17 +61,22 @@ trait MacroHelpers[C <: blackbox.Context] {
       case (t, el) => Select(t, TermName(el))
     }
   }
+
   protected def isUnit(tree: Tree) = tree.equalsStructure(q"()")
+
   protected def isNull(tree: Tree) = tree.equalsStructure(q"null")
+
   protected def isArray(path: c.Tree) =
     path.tpe.typeSymbol == definitions.ArrayClass || path.tpe.typeSymbol == jarraySym || path.tpe.baseClasses.contains(seqSym)
+
   protected def listToExpr(exprs: List[Tree]): Tree = q"List(..$exprs)"
+
   protected def mapToExpr(m: Map[String, Tree]): Tree = {
-    val args: List[Tree] =  m.map { case (k, v) => q"$k -> $v" }.toList
+    val args: List[Tree] = m.map { case (k, v) => q"$k -> $v" }.toList
     q"Map(..$args)"
   }
 
-  def prn(t: Tree) {
+  def prn(t: Tree): Unit = {
     println(s"Tpe: ${t.tpe}, S: ${t.symbol}, STS: " + (if (t.symbol ne null) t.symbol.typeSignature.toString else "null"))
   }
 

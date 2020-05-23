@@ -22,7 +22,7 @@ class JString(s: String) {
 case class JArray[A](args: A*) {
   val length = 0
   def apply(idx: Int): A = null.asInstanceOf[A]
-  def update(idx: Int, value: A) {}
+  def update(idx: Int, value: A): Unit = {}
   def concat(arrays: JArray[A]*): JArray[A] = this
   def indexOf(item: A): Int = 0
   def lastIndexOf(item: A): Int = 0
@@ -73,7 +73,7 @@ class RegExp(pattern: String, modifiers: String = "") {
   val lastIndex = 1
   val multiline = false
   val source = pattern
-  def compile(pattern: String, modifiers: String = "") {}
+  def compile(pattern: String, modifiers: String = ""): Unit = {}
   def exec(str: String): JString = null
   def test(str: String) = false
 }
@@ -139,52 +139,52 @@ class Date {
   def parse(date: String) = 0
 
   //	Parses a date string and returns the number of milliseconds since midnight of January 1, 1970
-  def setDate(v: Int) {}
+  def setDate(v: Int): Unit = {}
 
   //	Sets the day of the month of a date object
-  def setFullYear(v: Int) {}
+  def setFullYear(v: Int): Unit = {}
 
   //	Sets the year (four digits) of a date object
-  def setHours(v: Int) {}
+  def setHours(v: Int): Unit = {}
 
   //	Sets the hour of a date object
-  def setMilliseconds(v: Int) {}
+  def setMilliseconds(v: Int): Unit = {}
 
   //	Sets the milliseconds of a date object
-  def setMinutes(v: Int) {}
+  def setMinutes(v: Int): Unit = {}
 
   //	Set the minutes of a date object
-  def setMonth(v: Int) {}
+  def setMonth(v: Int): Unit = {}
 
   //	Sets the month of a date object
-  def setSeconds(v: Int) {}
+  def setSeconds(v: Int): Unit = {}
 
   //	Sets the seconds of a date object
-  def setTime(v: Int) {}
+  def setTime(v: Int): Unit = {}
 
   //	Sets a date and time by adding or subtracting a specified number of milliseconds to/from midnight January 1, 1970
-  def setUTCDate(v: Int) {}
+  def setUTCDate(v: Int): Unit = {}
 
   //	Sets the day of the month of a date object, according to universal time
-  def setUTCFullYear(v: Int) {}
+  def setUTCFullYear(v: Int): Unit = {}
 
   //	Sets the year of a date object, according to universal time (four digits)
-  def setUTCHours(v: Int) {}
+  def setUTCHours(v: Int): Unit = {}
 
   //	Sets the hour of a date object, according to universal time
-  def setUTCMilliseconds(v: Int) {}
+  def setUTCMilliseconds(v: Int): Unit = {}
 
   //	Sets the milliseconds of a date object, according to universal time
-  def setUTCMinutes(v: Int) {}
+  def setUTCMinutes(v: Int): Unit = {}
 
   //	Set the minutes of a date object, according to universal time
-  def setUTCMonth(v: Int) {}
+  def setUTCMonth(v: Int): Unit = {}
 
   //	Sets the month of a date object, according to universal time
-  def setUTCSeconds(v: Int) {}
+  def setUTCSeconds(v: Int): Unit = {}
 
   //	Set the seconds of a date object, according to universal time
-  def setYear(v: Int) {}
+  def setYear(v: Int): Unit = {}
 
   //	Deprecated. Use the def setFullYear() = 0 // method instead
   def toDateString() = 0

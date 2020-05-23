@@ -1,11 +1,12 @@
 package org
 
 import javax.script.{ScriptEngine, ScriptEngineManager}
-
 import com.yahoo.platform.yui.compressor.JavaScriptCompressor
 import java.io.{StringReader, StringWriter}
 
 import org.mozilla.javascript.ErrorReporter
+
+import scala.reflect.macros.whitebox
 
 package object jscala {
   import language.experimental.macros
@@ -23,11 +24,11 @@ package object jscala {
     def eval(): AnyRef = engine.eval(asString)
     def compress: String = {
       val compressor = new JavaScriptCompressor(new StringReader(asString), new ErrorReporter {
-        def warning(p1: String, p2: String, p3: Int, p4: String, p5: Int) {
+        def warning(p1: String, p2: String, p3: Int, p4: String, p5: Int): Unit = {
           println(s"Warn $p1 $p2, ${p3.toString} $p4 ${p5.toString}")
         }
 
-        def error(p1: String, p2: String, p3: Int, p4: String, p5: Int) {
+        def error(p1: String, p2: String, p3: Int, p4: String, p5: Int): Unit = {
           println(s"Error $p1 $p2, ${p3.toString} $p4 ${p5.toString}")
         }
 
@@ -55,7 +56,7 @@ package object jscala {
   implicit def implicitJString2String(s: JString): String = ""
   implicit def implicitArray2JArray[A](s: Array[A]): JArray[A] = ???
   implicit def implicitJArray2Array[A](s: JArray[A]): Array[A] = ???
-  implicit def implicitSeq2JArray[A](s: Seq[A]): JArray[A] = ???
+  implicit def implicitSeq2JArray[A](s: collection.Seq[A]): JArray[A] = ???
   implicit def implicitJArray2Seq[A](s: JArray[A]): Seq[A] = ???
 
   trait JsSerializer[-A] {
@@ -66,7 +67,7 @@ package object jscala {
   implicit object byteJsSerializer extends JsSerializer[Byte] { def apply(a: Byte): JsExpr = JsNum(a, false) }
   implicit object shortJsSerializer extends JsSerializer[Short] { def apply(a: Short): JsExpr = JsNum(a, false) }
   implicit object intJsSerializer extends JsSerializer[Int] { def apply(a: Int): JsExpr = JsNum(a, false) }
-  implicit object longJsSerializer extends JsSerializer[Long] { def apply(a: Long): JsExpr = JsNum(a, false) }
+  implicit object longJsSerializer extends JsSerializer[Long] { def apply(a: Long): JsExpr = JsNum(a.toDouble, false) }
   implicit object floatJsSerializer extends JsSerializer[Float] { def apply(a: Float): JsExpr = JsNum(a, true) }
   implicit object doubleJsSerializer extends JsSerializer[Double] { def apply(a: Double): JsExpr = JsNum(a, true) }
   implicit object stringJsSerializer extends JsSerializer[String] { def apply(a: String): JsExpr = JsString(a) }
@@ -184,11 +185,11 @@ package object jscala {
   def javascriptDebug(expr: Any): JsAst = macro Macros.javascriptDebugImpl
 
   object Macros {
-    def javascriptImpl(c: Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
+    def javascriptImpl(c: whitebox.Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
       val parser = new ScalaToJsConverter[c.type](c, debug = false)
       c.Expr(parser.convert(expr.tree))
     }
-    def javascriptStringImpl(c: Context)(expr: c.Expr[Any]): c.Expr[String] = {
+    def javascriptStringImpl(c: whitebox.Context)(expr: c.Expr[Any]): c.Expr[String] = {
       import c.universe._
       val parser = new ScalaToJsConverter[c.type](c, debug = false)
       val jsAst = parser.convert(expr.tree)
@@ -196,7 +197,7 @@ package object jscala {
       c.Expr[String](q"$str")
     }
 
-    def javascriptDebugImpl(c: Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
+    def javascriptDebugImpl(c: whitebox.Context)(expr: c.Expr[Any]): c.Expr[JsAst] = {
       val parser = new ScalaToJsConverter[c.type](c, debug = true)
       c.Expr(parser.convert(expr.tree))
     }
