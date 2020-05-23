@@ -8,7 +8,7 @@ lazy val buildSettings = Seq(
     crossScalaVersions := Seq("2.11.12", "2.12.11", "2.13.2"),
     scalaVersion := "2.13.2",
     resolvers += Resolver.sonatypeRepo("snapshots"),
-    usePgpKeyHex("2B6E37353BE8BF8ED89B858DBC5373CC0297421A"),
+//    usePgpKeyHex("2B6E37353BE8BF8ED89B858DBC5373CC0297421A"),
     publishTo := { Some( if (version.value.trim endsWith "SNAPSHOT") ossSnapshots else ossStaging)},
     publishMavenStyle := true,
     publishArtifact in Test := false,
